@@ -1,3 +1,12 @@
+/**
+ * Rodrigo - 2210814
+ * Breno Gallo - 2110183
+ * Uso:
+ *   java DigestCalculator <Tipo_Digest> <Caminho_ArqListaDigest> <Caminho_da_Pasta_dos_Arquivos>
+ *
+ * Tipos de digest suportados: MD5, SHA1, SHA256, SHA512.
+ */
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -22,17 +31,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-/**
- * DigestCalculator
- *
- * Programa em Java (Sun JDK 1.8) para calculo e verificacao de digests criptograficos
- * utilizando a Java Cryptography Architecture (JCA).
- *
- * Uso:
- *   java DigestCalculator <Tipo_Digest> <Caminho_ArqListaDigest> <Caminho_da_Pasta_dos_Arquivos>
- *
- * Tipos de digest suportados: MD5, SHA1, SHA256, SHA512.
- */
 public class DigestCalculator {
 
     /**
