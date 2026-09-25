@@ -445,7 +445,7 @@ public class DigestCalculator {
     }
 
     /**
-     * Mapeia o tipo fornecido para o formato canonico de saida e persistencia no XML (sem hífen).
+     * Mapeia o tipo fornecido para o formato canonico de saida e persistencia no XML (sem hifen).
      */
     private static String mapToCanonicalType(String type) {
         if (type == null) {
