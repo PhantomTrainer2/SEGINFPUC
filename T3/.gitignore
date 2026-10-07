@@ -1,0 +1,5 @@
+# Artefatos de compilacao e execucao do Cofre Digital
+build/
+cofre.db
+# Arquivos decriptados gravados na pasta segura de teste
+Pacote-T3/Files/*.docx
