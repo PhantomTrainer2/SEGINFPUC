@@ -87,6 +87,7 @@ public class CofreDigital extends JFrame {
     private void partida() {
         if (banco.contarUsuarios() == 0) {
             banco.registrar(1005, null, null);
+            banco.registrar(6001, null, null);
             mostrarTela(new TelaCadastro(this, true));
         } else {
             banco.registrar(1006, null, null);

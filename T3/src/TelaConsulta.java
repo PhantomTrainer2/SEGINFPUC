@@ -124,7 +124,7 @@ class TelaConsulta extends JPanel {
         JScrollPane rolagem = new JScrollPane(tabela);
         rolagem.setPreferredSize(new Dimension(520, 150));
 
-        JButton botaoVoltar = new JButton("Voltar ao Menu Principal");
+        JButton botaoVoltar = new JButton("Voltar de Consultar para o Menu Principal");
         botaoVoltar.addActionListener(e -> {
             janela.registrar(7002);
             chavePrivadaUsuario = null;
@@ -138,17 +138,19 @@ class TelaConsulta extends JPanel {
                 BorderLayout.NORTH);
         areaTabela.add(rolagem, BorderLayout.CENTER);
 
+        // Corpo 1 igual ao da Tela Principal; o total de consultas abre o corpo 2
         JPanel corpo2 = new JPanel(new BorderLayout(0, 10));
-        corpo2.add(Componentes.coluna(campos, linhaListar), BorderLayout.NORTH);
+        corpo2.add(Componentes.coluna(totalConsultas, campos, linhaListar), BorderLayout.NORTH);
         corpo2.add(areaTabela, BorderLayout.CENTER);
         corpo2.add(linhaVoltar, BorderLayout.SOUTH);
 
         atualizarTotal();
-        add(Componentes.montarTela(usuario, totalConsultas, corpo2), BorderLayout.CENTER);
+        JLabel totalAcessos = new JLabel("Total de acessos do usu\u00e1rio: " + usuario.totalAcessos);
+        add(Componentes.montarTela(usuario, totalAcessos, corpo2), BorderLayout.CENTER);
     }
 
     private void atualizarTotal() {
-        totalConsultas.setText("Total de consultas do usuario: " + usuario.totalConsultas);
+        totalConsultas.setText("Total de consultas do usu\u00e1rio: " + usuario.totalConsultas);
     }
 
     private void listar() {

@@ -20,7 +20,7 @@ class TelaSaida extends JPanel {
     TelaSaida(final CofreDigital janela, Usuario usuario) {
         super(new BorderLayout());
 
-        JButton botaoEncerrarSessao = new JButton("Encerrar Sessao");
+        JButton botaoEncerrarSessao = new JButton("Encerrar Sess\u00e3o");
         botaoEncerrarSessao.addActionListener(e -> {
             janela.registrar(8002);
             janela.encerrarSessao();
@@ -30,7 +30,7 @@ class TelaSaida extends JPanel {
             janela.registrar(8003);
             janela.encerrarSistema();
         });
-        JButton botaoVoltar = new JButton("Voltar ao Menu Principal");
+        JButton botaoVoltar = new JButton("Voltar de Sair para o Menu Principal");
         botaoVoltar.addActionListener(e -> {
             janela.registrar(8004);
             janela.mostrarTelaPrincipal();
@@ -44,11 +44,11 @@ class TelaSaida extends JPanel {
         voltar.add(botaoVoltar);
 
         JPanel corpo2 = new JPanel(new BorderLayout());
-        corpo2.add(Componentes.coluna(Componentes.titulo("Saida do sistema:"),
-                new JLabel("Pressione o botao Encerrar Sessao ou o botao Encerrar Sistema para confirmar."),
+        corpo2.add(Componentes.coluna(Componentes.titulo("Sa\u00edda do sistema:"),
+                new JLabel("Pressione o bot\u00e3o Encerrar Sess\u00e3o ou o bot\u00e3o Encerrar Sistema para confirmar."),
                 encerrar, voltar), BorderLayout.NORTH);
 
-        add(Componentes.montarTela(usuario, new JLabel("Total de acessos do usuario: " + usuario.totalAcessos),
+        add(Componentes.montarTela(usuario, new JLabel("Total de acessos do usu\u00e1rio: " + usuario.totalAcessos),
                 corpo2), BorderLayout.CENTER);
     }
 }

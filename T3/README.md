@@ -41,7 +41,11 @@ Todo o restante (AES, RSA, SHA1PRNG, assinatura, X.509, BASE64, HMAC do TOTP, in
 
 Gera `cofre.jar` e `logview.jar`. O `logview.jar` é um programa separado: suas classes não fazem parte do `cofre.jar`.
 
-### Windows (ou compilação manual)
+### Windows
+
+No **Git Bash**, o mesmo `./build.sh` funciona (usa `;` como separador do classpath). O instalador do JDK no Windows só coloca `java`/`javac` no PATH; para o `jar`, defina `JAVA_HOME` (ex.: `C:\Program Files\Java\jdk-23`) ou coloque `<JDK>\bin` no PATH. Detalhes em [`HowToTest.md`](HowToTest.md).
+
+### Compilação manual (sem gerar os jars)
 
 ```bat
 mkdir build\classes
@@ -104,7 +108,8 @@ Frases secretas das chaves do pacote: `admin`, `user01` e `user02`.
 | Grupo que pode ver x grupo que pode abrir | A listagem mostra os arquivos do dono, do grupo e os compartilhados. Só abre quem tem envelope: o dono (`.env`) ou o usuário do compartilhamento (`.N.shr`). Os demais recebem "acesso negado" (7017). |
 | Frase secreta inválida na consulta (sem código próprio) | Registra 6006/6007, cujos textos descrevem exatamente o evento. |
 | Total de acessos / consultas | Acesso = sessão iniciada (1003). Consulta = cada clique em Listar (7003). |
-| Corpo 1 da tela de consulta | "Total de consultas do usuário", conforme o desenho do enunciado. |
+| Corpo 1 / corpo 2 da tela de consulta | O texto pede "o mesmo cabeçalho e corpo 1 da Tela Principal" e o total de consultas no corpo 2: o corpo 1 mostra "Total de acessos do usuário" e o corpo 2 começa com "Total de consultas do usuário". |
+| Registro 6001 na partida | A tela de cadastro do administrador também grava 6001 (sem login name, pois ainda não há usuário). |
 | Administrador do sistema | O usuário cadastrado na partida (menor UID do grupo Administrador). O `logView` aceita a chave de qualquer usuário do grupo Administrador. |
 | Erros consecutivos e bloqueio | Ficam no banco (`erros_senha`, `erros_token`, `bloqueado_ate`). Continuam valendo se o sistema for reiniciado e são zerados no bloqueio. |
 | Ordem do cadastro | Senha → certificado → chave privada → confirmação → login único → gravação. |

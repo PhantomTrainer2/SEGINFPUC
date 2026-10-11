@@ -6,7 +6,51 @@ Roteiro de testes manuais do Trabalho 3. Cada caso traz os **passos**, o **resul
 
 ---
 
+## Pré-requisitos (instalar antes de testar)
+
+Só o que o enunciado permite: **Java SE (JDK)**, um **banco relacional (SQLite)**, o provider **BouncyCastle** (classe `OpenBSDBCrypt`) e o **Google Authenticator**. O resto são ferramentas de apoio para compilar e testar.
+
+| # | O quê | Para quê | Link |
+| :--- | :--- | :--- | :--- |
+| 1 | **JDK (Java SE) 8 ou superior** (testado com o JDK 23) | Compilar (`javac`, `jar`) e rodar (`java`) | [Oracle JDK](https://www.oracle.com/java/technologies/downloads/) ou [Eclipse Temurin](https://adoptium.net/temurin/releases/) |
+| 2 | **Git for Windows** (inclui o **Git Bash**) | Rodar o `build.sh` e os comandos `sh` deste roteiro | [git-scm.com/download/win](https://git-scm.com/download/win) |
+| 3 | **BouncyCastle** `bcprov-jdk18on-1.86.jar` | Hash bcrypt da senha (`OpenBSDBCrypt`) | [Maven Central](https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.86/bcprov-jdk18on-1.86.jar) |
+| 4 | **SQLite JDBC** `sqlite-jdbc-3.53.4.0.jar` | Driver do banco SQLite (já traz o SQLite embutido, sem instalar nada) | [Maven Central](https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar) |
+| 5 | **Google Authenticator** (celular) | Gerar o token TOTP da etapa 3 | [Android](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2) / [iPhone](https://apps.apple.com/app/google-authenticator/id388497605) |
+| 6 | *(opcional)* Editor de `.docx` | Conferir que os arquivos decriptados abrem | [LibreOffice](https://www.libreoffice.org/download/download-libreoffice/) ou Microsoft Word |
+| 7 | *(opcional)* SQLite CLI (`sqlite3`) | Só para o teste opcional 8.1 | [sqlite.org/download.html](https://sqlite.org/download.html) (pacote *sqlite-tools-win-x64*) |
+
+### Configurar o JDK no Windows
+
+O instalador do JDK coloca só `java` e `javac` no PATH. O `build.sh` também precisa do `jar`.
+
+1. Abra **Editar as variáveis de ambiente do sistema** → **Variáveis de Ambiente**.
+2. Crie `JAVA_HOME` = pasta do JDK (ex.: `C:\Program Files\Java\jdk-23`).
+3. Em `Path`, adicione `%JAVA_HOME%\bin` e **mova para o topo**.
+4. Feche e reabra os terminais. Confira com `java -version`, `javac -version` e `jar --version`.
+
+> Sem o passo 3, o `build.sh` ainda funciona se `JAVA_HOME` estiver definido.
+
+### Baixar as bibliotecas
+
+As duas bibliotecas ficam em `T3/lib/` (pasta fora do git). No Git Bash, a partir da pasta `T3`:
+
+```bash
+mkdir -p lib && cd lib
+curl -fO https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.86/bcprov-jdk18on-1.86.jar
+curl -fO https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar
+cd ..
+```
+
+### Relógios sincronizados
+
+O TOTP depende da hora. Deixe **Windows** e **celular** com data/hora automáticas. Uma diferença maior que 30 s faz o token ser rejeitado.
+
+---
+
 ## 0. Preparação
+
+No **Git Bash**:
 
 ```bash
 cd T3
@@ -15,7 +59,7 @@ rm -f cofre.db      # banco vazio = primeira execução
 ```
 
 * Execute sempre a partir da pasta `T3`: o banco `cofre.db` fica no diretório corrente.
-* Tenha o **Google Authenticator** instalado no celular.
+* O `cofre.jar` pode ser rodado no Git Bash ou no PowerShell. O `logView` deve ser rodado no **PowerShell** (veja abaixo).
 * Dados de teste (pacote do professor + senhas sugeridas):
 
 | Usuário | Certificado | Chave privada | Frase secreta | Senha pessoal sugerida |
@@ -26,12 +70,13 @@ rm -f cofre.db      # banco vazio = primeira execução
 
 ### Como conferir os registros
 
-Num **segundo terminal**, também na pasta `T3`. Pode rodar com o cofre aberto, mas só depois de o admin estar cadastrado.
+Num **PowerShell**, também na pasta `T3`. Pode rodar com o cofre aberto, mas só depois de o admin estar cadastrado.
 
-```bash
-java -jar logview.jar Pacote-T3/Keys/admin-pkcs8-aes.key     # frase: admin
+```powershell
+java -jar logview.jar Pacote-T3\Keys\admin-pkcs8-aes.key     # frase: admin
 ```
 
+* Use o PowerShell (ou o Prompt de Comando): no Git Bash a frase pode aparecer na tela e os acentos saem trocados.
 * Os registros saem em ordem cronológica.
 * Use as **últimas linhas** para conferir os códigos esperados de cada caso.
 * Registros sem usuário associado mostram `-` no lugar do login name (por exemplo, os da partida do sistema).
@@ -45,9 +90,10 @@ java -jar cofre.jar
 ```
 
 Deve abrir a tela **"Partida do sistema: cadastro do administrador"** com:
-* **Corpo 1:** "Total de usuarios do sistema: 0".
+* **Corpo 1:** "Total de usuários do sistema: 0".
 * **Grupo:** fixo em `Administrador` (desabilitado).
-* **Botões:** não há botão de voltar.
+* **Botões:** só **Cadastrar** (não há botão de voltar).
+* Códigos: `1001 1005 6001`.
 
 ### 1.1 Erros de validação do formulário
 
@@ -88,10 +134,10 @@ Preencha os campos com os dados corretos do admin. Em cada linha, altere **apena
 - [ ] No Google Authenticator, cadastre a chave:
   1. Toque em **+**.
   2. Escolha **Inserir chave de configuração**.
-  3. Em **Nome da conta**, use o e-mail; em **Chave**, cole o BASE32.
+  3. Em **Nome da conta**, use o e-mail; em **Chave**, digite o BASE32.
   4. Em **Tipo**, escolha **Baseada no horário**.
 - [ ] Ao fechar o diálogo, deve abrir a **tela de login** (etapa 1).
-- [ ] Códigos: `1001 1005 6002 6008 2001`.
+- [ ] Códigos: `6002 6008 2001`.
 
 ---
 
@@ -109,11 +155,11 @@ Preencha os campos com os dados corretos do admin. Em cada linha, altere **apena
 
 - [ ] São **5 botões com 2 dígitos cada**, cobrindo de 0 a 9 **sem repetição**.
 - [ ] Os dígitos são **redistribuídos a cada clique**.
-- [ ] O campo de senha mostra **apenas bolinhas** (nunca os dígitos).
+- [ ] O campo de senha mostra **apenas asteriscos** (nunca os dígitos).
 - [ ] O botão **OK** só fica habilitado a partir de **8 dígitos**.
 - [ ] Com **10 dígitos**, os botões numéricos ficam desabilitados.
 - [ ] **LIMPAR** apaga o que foi digitado.
-- [ ] Senha correta (`13572468`): vai para a etapa 3. Códigos: `3003 3002 4001`.
+- [ ] Senha correta (`13572468`): aparece "Verificando a senha..." (cerca de 1 s) e vai para a etapa 3. Códigos: `3003 3002 4001`.
 
 ### 2.3 Etapa 3: token TOTP
 
@@ -154,18 +200,18 @@ Preencha os campos com os dados corretos do admin. Em cada linha, altere **apena
 
 ## 3. Tela Principal e cadastro de usuários (logado como admin)
 
-### 3.1 Cabeçalho e corpo 1
+### 3.1 Cabeçalho, corpo 1 e corpo 2
 
 - [ ] O cabeçalho mostra:
   * `Login: admin@inf1416.puc-rio.br`
   * `Grupo: Administrador`
   * `Nome: Administrator`
-- [ ] "Total de acessos do usuario" aumenta 1 a cada login.
-- [ ] O menu mostra as opções **1, 2 e 3**.
+- [ ] Corpo 1: "Total de acessos do usuário" aumenta 1 a cada login.
+- [ ] Corpo 2: "Menu Principal" com **1 – Cadastrar um novo usuário**, **2 – Consultar pasta de arquivos secretos do usuário** e **3 – Sair do Sistema**.
 
 ### 3.2 Cadastrar o user01 e o user02
 
-- [ ] Clique em **1 - Cadastrar um novo usuario**. O cabeçalho é o mesmo, e o corpo 1 mostra "Total de usuarios do sistema: 1". Códigos: `5002 6001`.
+- [ ] Clique em **1 – Cadastrar um novo usuário**. O cabeçalho é o mesmo, e o corpo 1 mostra "Total de usuários do sistema: 1". Códigos: `5002 6001`.
 - [ ] Cadastre o **user01**:
   1. Grupo `Usuário`, frase `user01`, senha `2468135790`.
   2. Confirme os dados: série **18 (0x12)**, sujeito **Usuario 01**.
@@ -173,17 +219,22 @@ Preencha os campos com os dados corretos do admin. Em cada linha, altere **apena
 - [ ] Depois do sucesso, o **formulário volta vazio** e o total passa para **2**. Códigos: `6002 6008`.
 - [ ] Cadastre o **user02** do mesmo jeito: frase `user02`, senha `9081726354`, série **19 (0x13)**.
 - [ ] **Login duplicado:** cadastrar o user01 de novo e clicar em **Confirmar** deve dar "O login name user01@inf1416.puc-rio.br ja esta cadastrado no sistema." e manter o formulário preenchido.
-- [ ] **Voltar ao Menu Principal:** volta para a Tela Principal. Códigos: `6010 5001`.
+- [ ] **Voltar de Cadastrar para o Menu Principal:** volta para a Tela Principal. Códigos: `6010 5001`.
 
 ### 3.3 Menu do grupo Usuário
 
 - [ ] Entre como **user01**:
   * O cabeçalho mostra `Grupo: Usuário`.
   * O menu **não** mostra a opção 1, só a **2** e a **3**.
+  * O corpo 1 continua mostrando "Total de acessos do usuário".
 
 ---
 
 ## 4. Consultar pasta de arquivos secretos
+
+- [ ] Ao abrir a tela (códigos `5003 7001`):
+  * **Cabeçalho** e **corpo 1** iguais aos da Tela Principal ("Total de acessos do usuário").
+  * **Corpo 2** começa com "Total de consultas do usuário", seguido de "Caminho da pasta", "Frase secreta", botão **Listar**, tabela (nome secreto, dono, grupo) e botão **Voltar de Consultar para o Menu Principal**.
 
 Pasta: `Pacote-T3/Files`. O caminho relativo funciona porque o sistema roda a partir de `T3`; também dá para escolher pelo botão `...`.
 
@@ -194,8 +245,8 @@ Pasta: `Pacote-T3/Files`. O caminho relativo funciona porque o sistema roda a pa
 | [ ] | user02 (`user02`) | `teste01.docx`, `teste02.docx` | teste02 abre (dono). teste01 dá **acesso negado**: é do mesmo grupo, mas não há envelope para o user02 |
 
 **Códigos esperados:**
-* **Listagem com sucesso:** `5003 7001 7003 7005 7006 7010 7011 7009 7014`.
-* **Arquivo aberto:** `7015 7016 7018 7019`. A mensagem informa onde o arquivo foi gravado (`Pacote-T3/Files/<nome>.docx`). **Abra o .docx** para confirmar que o conteúdo é legível.
+* **Listagem com sucesso:** `7003 7005 7006 7010 7011 7009 7014`.
+* **Arquivo aberto:** `7015 7016 7018 7019`. A mensagem informa o caminho absoluto onde o arquivo foi gravado (terminando em `T3\Pacote-T3\Files\<nome>.docx`). **Abra o .docx** para confirmar que o conteúdo é legível.
 * **Acesso negado:** `7015 7017`, com a mensagem "Voce nao tem permissao de acesso ao arquivo teste01.docx: ...".
 
 **Outros casos:**
@@ -203,57 +254,60 @@ Pasta: `Pacote-T3/Files`. O caminho relativo funciona porque o sistema roda a pa
 | ☐ | Caso | Resultado esperado | Códigos |
 | :--- | :--- | :--- | :--- |
 | [ ] | Frase secreta errada (ex.: user01 digitando `admin`) | Frase secreta invalida: ela nao decripta a sua chave privada. (tabela vazia) | 7003 6006 |
-| [ ] | Pasta `/nao/existe` ou campo vazio | Caminho de pasta invalido: ... | 7003 7004 |
+| [ ] | Pasta `C:\nao\existe` ou campo vazio | Caminho de pasta invalido: ... | 7003 7004 |
 | [ ] | Pasta que existe mas não é cofre (ex.: `Pacote-T3/Keys`) | Falha na decriptacao do arquivo de indice ... | 7003 7007 |
-| [ ] | Clicar em Listar várias vezes | "Total de consultas do usuario" aumenta 1 a cada clique | 7003 |
-| [ ] | Voltar ao Menu Principal | Volta para a Tela Principal | 7002 5001 |
+| [ ] | Clicar em Listar várias vezes | "Total de consultas do usuário" aumenta 1 a cada clique | 7003 |
+| [ ] | Voltar de Consultar para o Menu Principal | Volta para a Tela Principal | 7002 5001 |
 
 ---
 
 ## 5. Integridade e autenticidade (arquivos adulterados)
 
-Use uma **cópia** da pasta. O pacote original nunca deve ser alterado.
+Use uma **cópia** da pasta, `FilesTeste`, dentro de `T3` (fora do git). O pacote original nunca deve ser alterado. No **Git Bash**, na pasta `T3`:
 
 ```bash
 # copia limpa (sem os .docx decriptados na secao 4)
-rm -rf /tmp/FilesTeste && cp -r Pacote-T3/Files /tmp/FilesTeste && rm -f /tmp/FilesTeste/*.docx
+novacopia() { rm -rf FilesTeste && cp -r Pacote-T3/Files FilesTeste && rm -f FilesTeste/*.docx; }
 
 # inverte os bits de 1 byte (posicao 10) de um arquivo
-adulterar() { python3 -c "import sys; p=sys.argv[1]; b=bytearray(open(p,'rb').read()); b[10]^=0xFF; open(p,'wb').write(b)" "$1"; }
+adulterar() { b=$(od -An -tu1 -j10 -N1 "$1" | tr -d ' '); printf "\\$(printf '%03o' $((b ^ 255)))" | dd of="$1" bs=1 seek=10 conv=notrunc status=none; }
 ```
 
+Confira que a adulteração funcionou: `cmp Pacote-T3/Files/index.asd FilesTeste/index.asd` deve dizer que os arquivos diferem.
+
 Para cada linha:
-1. Recrie a cópia limpa.
+1. Rode `novacopia`.
 2. Aplique a alteração.
-3. Entre como **user01** (frase `user01`) e liste a pasta `/tmp/FilesTeste`.
+3. Entre como **user01** (frase `user01`) e liste a pasta `FilesTeste`.
 
 | ☐ | Alteração | Ação | Resultado esperado | Últimos códigos |
 | :--- | :--- | :--- | :--- | :--- |
-| [ ] | `adulterar /tmp/FilesTeste/index.asd` | Listar | Falha na verificacao ... arquivo de indice | 7005 7008 |
-| [ ] | `adulterar /tmp/FilesTeste/index.enc` | Listar | Falha na verificacao ... arquivo de indice | 7005 7008 |
-| [ ] | `rm /tmp/FilesTeste/index.env` | Listar | Falha na decriptacao do arquivo de indice | 7007 |
-| [ ] | `adulterar /tmp/FilesTeste/share.asd` | Listar | Falha na verificacao ... arquivo de share | 7005 7006 7010 7013 |
-| [ ] | `adulterar /tmp/FilesTeste/share.env` | Listar | Falha na decriptacao do arquivo de share | 7005 7006 7012 |
-| [ ] | `adulterar /tmp/FilesTeste/XXYYZZ11.asd` | Abrir teste01.docx | Falha na verificacao de integridade e autenticidade | 7015 7016 7018 7021 |
-| [ ] | `adulterar /tmp/FilesTeste/XXYYZZ11.enc` | Abrir teste01.docx | Falha na verificacao de integridade e autenticidade | 7015 7016 7018 7021 |
-| [ ] | `adulterar /tmp/FilesTeste/XXYYZZ11.env` | Abrir teste01.docx | Falha na decriptacao do arquivo (sigilo) | 7015 7016 7020 |
-| [ ] | `adulterar /tmp/FilesTeste/XXYYZZ22.1.shr` | Abrir teste02.docx | Falha na decriptacao do arquivo (sigilo) | 7015 7016 7020 |
+| [ ] | `adulterar FilesTeste/index.asd` | Listar | Falha na verificacao ... arquivo de indice | 7005 7008 |
+| [ ] | `adulterar FilesTeste/index.enc` | Listar | Falha na verificacao ... arquivo de indice | 7005 7008 |
+| [ ] | `rm FilesTeste/index.env` | Listar | Falha na decriptacao do arquivo de indice | 7007 |
+| [ ] | `adulterar FilesTeste/share.asd` | Listar | Falha na verificacao ... arquivo de share | 7005 7006 7010 7013 |
+| [ ] | `adulterar FilesTeste/share.env` | Listar | Falha na decriptacao do arquivo de share | 7005 7006 7012 |
+| [ ] | `adulterar FilesTeste/XXYYZZ11.asd` | Abrir teste01.docx | Falha na verificacao de integridade e autenticidade | 7015 7016 7018 7021 |
+| [ ] | `adulterar FilesTeste/XXYYZZ11.enc` | Abrir teste01.docx | Falha na verificacao de integridade e autenticidade | 7015 7016 7018 7021 |
+| [ ] | `adulterar FilesTeste/XXYYZZ11.env` | Abrir teste01.docx | Falha na decriptacao do arquivo (sigilo) | 7015 7016 7020 |
+| [ ] | `adulterar FilesTeste/XXYYZZ22.1.shr` | Abrir teste02.docx | Falha na decriptacao do arquivo (sigilo) | 7015 7016 7020 |
 
 **Observe:**
 * Em nenhum caso de falha o arquivo decriptado é gravado na pasta.
 * Alterar o `.enc` faz a decriptação "funcionar" (7018), mas o conteúdo sai corrompido, e a assinatura detecta isso (7021).
+* Ao terminar: `rm -rf FilesTeste`.
 
 ---
 
 ## 6. Tela de Saída
 
-- [ ] Clique em **3 - Sair do Sistema**. A tela mostra:
+- [ ] Clique em **3 – Sair do Sistema**. A tela mostra:
   * o mesmo cabeçalho;
-  * "Total de acessos do usuario";
-  * a mensagem "Pressione o botao Encerrar Sessao ou o botao Encerrar Sistema para confirmar.";
-  * os três botões.
+  * corpo 1: "Total de acessos do usuário";
+  * corpo 2: "Saída do sistema:" e a mensagem "Pressione o botão Encerrar Sessão ou o botão Encerrar Sistema para confirmar.";
+  * os botões **Encerrar Sessão**, **Encerrar Sistema** e **Voltar de Sair para o Menu Principal**.
   * Códigos: `5004 8001`.
-- [ ] **Voltar ao Menu Principal:** códigos `8004 5001`.
+- [ ] **Voltar de Sair para o Menu Principal:** códigos `8004 5001`.
 - [ ] **Encerrar Sessão:** volta para o login (etapa 1). Códigos: `8002 1004 2001`.
 - [ ] **Encerrar Sistema:** a janela fecha. Códigos: `8003 1004 1002`.
 - [ ] **X da janela com sessão aberta:** códigos `1004 1002`.
@@ -280,19 +334,23 @@ java -jar cofre.jar
 
 ## 8. Programa de auditoria `logView`
 
+Rode no **PowerShell**, na pasta `T3`:
+
 | ☐ | Comando / entrada | Resultado esperado |
 | :--- | :--- | :--- |
-| [ ] | `java -jar logview.jar Pacote-T3/Keys/admin-pkcs8-aes.key`, frase `admin` | "Administrador autenticado", depois os registros com data, hora, código e mensagem, em ordem cronológica. A frase **não aparece** ao digitar. |
+| [ ] | `java -jar logview.jar Pacote-T3\Keys\admin-pkcs8-aes.key`, frase `admin` | "Administrador autenticado", depois os registros com data, hora, código e mensagem, em ordem cronológica. A frase **não aparece** ao digitar. |
 | [ ] | Mesmo comando, frase `errada` | Autenticacao negada: frase secreta invalida para a chave privada informada. |
-| [ ] | `java -jar logview.jar Pacote-T3/Keys/user01-pkcs8-aes.key`, frase `user01` | Autenticacao negada: a chave privada nao pertence a um administrador do sistema ... |
-| [ ] | `java -jar logview.jar /nao/existe.key` | Erro: caminho do arquivo da chave privada invalido |
-| [ ] | `java -jar logview.jar Pacote-T3/Keys/admin-pkcs8-aes.key < /dev/null` (sem terminal) | Erro: execute o logView em um terminal ... |
-| [ ] | `unzip -l cofre.jar \| grep LogView` | Nenhuma saída: o logView **não** faz parte do programa do cofre. |
+| [ ] | `java -jar logview.jar Pacote-T3\Keys\user01-pkcs8-aes.key`, frase `user01` | Autenticacao negada: a chave privada nao pertence a um administrador do sistema ... |
+| [ ] | `java -jar logview.jar C:\nao\existe.key` | Erro: caminho do arquivo da chave privada invalido |
+| [ ] | `java -jar logview.jar` (sem argumentos) | Uso: java -jar logview.jar <Caminho_Chave_Privada_Admin> [Caminho_Banco_de_Dados] |
+| [ ] | `jar tf cofre.jar \| Select-String LogView` | Nenhuma saída: o logView **não** faz parte do programa do cofre. |
 
 ### 8.1 (Opcional) A tabela Registros não guarda o texto das mensagens
 
+Precisa do `sqlite3` (pré-requisito 7):
+
 ```bash
-python3 -c "import sqlite3; c=sqlite3.connect('cofre.db'); print([d[1] for d in c.execute('PRAGMA table_info(Registros)')]); [print(r) for r in c.execute('SELECT * FROM Registros ORDER BY RID DESC LIMIT 5')]"
+sqlite3 cofre.db "PRAGMA table_info(Registros);" "SELECT * FROM Registros ORDER BY RID DESC LIMIT 5;"
 ```
 
 As colunas são `RID, MID, data_hora, UID, login_name, arquivo`. O texto fica só na tabela `Mensagens`, ligado pelo `MID`.

@@ -81,7 +81,7 @@ O fluxo começa em `main()`:
 
 1. Abre o banco e registra 1001.
 2. Chama `partida()`, que tem dois caminhos:
-   * **Banco sem usuários:** registra 1005 e abre `TelaCadastro` em modo partida. O grupo fica fixo em Administrador e não há botão de voltar.
+   * **Banco sem usuários:** registra 1005 e 6001 e abre `TelaCadastro` em modo partida. O grupo fica fixo em Administrador e não há botão de voltar.
    * **Com usuários:** registra 1006 e chama `validarFraseAdministrador()`. Ela pede a frase do admin e valida a chave guardada no Chaveiro. Se a validação falhar, o sistema avisa e encerra.
 
 **Por que a chave do admin fica em memória:** o `index` e o `share` são protegidos com as chaves do administrador. Sem a chave privada dele, nenhum usuário consegue listar a pasta.
@@ -187,7 +187,7 @@ Todas as telas seguem o formato do enunciado:
 | :--- | :--- | :--- |
 | `TelaPrincipal` | Total de acessos | A opção 1 só aparece se `usuario.isAdministrador()` |
 | `TelaCadastro` | Total de usuários | Formulário vazio após sucesso, preenchido após erro |
-| `TelaConsulta` | Total de consultas | Conta 1 a cada clique em Listar |
+| `TelaConsulta` | Total de acessos | O corpo 2 começa com o total de consultas, que conta 1 a cada clique em Listar |
 | `TelaSaida` | Total de acessos | Encerrar Sessão volta à etapa 1; Encerrar Sistema fecha |
 
 * A navegação fica em `CofreDigital.mostrarTela*()`, e cada método registra o código da tela (5001, 6001, 7001, 8001).

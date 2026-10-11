@@ -1,5 +1,11 @@
 # Artefatos de compilacao e execucao do Cofre Digital
 build/
+cofre.jar
+logview.jar
 cofre.db
+# Bibliotecas baixadas do Maven Central (veja o README.md)
+lib/
 # Arquivos decriptados gravados na pasta segura de teste
 Pacote-T3/Files/*.docx
+# Copia da pasta segura usada nos testes de adulteracao (HowToTest.md)
+FilesTeste/

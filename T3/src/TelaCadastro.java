@@ -64,14 +64,14 @@ class TelaCadastro extends JPanel {
         adicionarLinha(formulario, 2, "Frase secreta:", campoFrase, null);
         adicionarLinha(formulario, 3, "Grupo:", comboGrupo, null);
         adicionarLinha(formulario, 4, "Senha pessoal:", campoSenha, null);
-        adicionarLinha(formulario, 5, "Confirmacao senha pessoal:", campoConfirmacao, null);
+        adicionarLinha(formulario, 5, "Confirma\u00e7\u00e3o senha pessoal:", campoConfirmacao, null);
 
         JButton botaoCadastrar = new JButton("Cadastrar");
         botaoCadastrar.addActionListener(e -> cadastrar());
         JPanel botoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         botoes.add(botaoCadastrar);
         if (!partida) {
-            JButton botaoVoltar = new JButton("Voltar ao Menu Principal");
+            JButton botaoVoltar = new JButton("Voltar de Cadastrar para o Menu Principal");
             botaoVoltar.addActionListener(e -> {
                 janela.registrar(6010);
                 janela.mostrarTelaPrincipal();
@@ -81,7 +81,7 @@ class TelaCadastro extends JPanel {
         }
 
         JPanel corpo2 = new JPanel(new BorderLayout(0, 10));
-        corpo2.add(Componentes.titulo("Formulario de Cadastro:"), BorderLayout.NORTH);
+        corpo2.add(Componentes.titulo("Formul\u00e1rio de Cadastro:"), BorderLayout.NORTH);
         corpo2.add(formulario, BorderLayout.CENTER);
         corpo2.add(botoes, BorderLayout.SOUTH);
 
@@ -112,7 +112,7 @@ class TelaCadastro extends JPanel {
     }
 
     private void atualizarTotal() {
-        totalUsuarios.setText("Total de usuarios do sistema: " + janela.banco.contarUsuarios());
+        totalUsuarios.setText("Total de usu\u00e1rios do sistema: " + janela.banco.contarUsuarios());
     }
 
     private void cadastrar() {
@@ -161,8 +161,8 @@ class TelaCadastro extends JPanel {
         X509Certificate certificado = dados.certificado;
         SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         String[][] campos = {
-            {"Versao:", String.valueOf(certificado.getVersion())},
-            {"Serie:", certificado.getSerialNumber() + " (0x"
+            {"Vers\u00e3o:", String.valueOf(certificado.getVersion())},
+            {"S\u00e9rie:", certificado.getSerialNumber() + " (0x"
                     + certificado.getSerialNumber().toString(16).toUpperCase() + ")"},
             {"Validade:", formato.format(certificado.getNotBefore()) + " a "
                     + formato.format(certificado.getNotAfter())},
