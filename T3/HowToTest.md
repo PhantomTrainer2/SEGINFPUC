@@ -370,3 +370,110 @@ As colunas são `RID, MID, data_hora, UID, login_name, arquivo`. O texto fica s�
 - [ ] Arquivo adulterado é detectado (integridade/autenticidade).
 - [ ] Encerrar Sessão × Encerrar Sistema.
 - [ ] `logView` separado, só para o admin, frase sem eco, registros em ordem cronológica.
+
+---
+
+## 10. Testar manualmente!
+
+Os casos das seções 1 a 8 já são conferidos automaticamente pelos testes da pasta [`testesUni`](testesUni/README.md). No Git Bash, na pasta `T3`, rode `./testesUni/rodar.sh`; o resultado deve terminar em `0 FALHA(S)`.
+
+Sobram quatro verificações que dependem de você: o **celular**, o **teclado de verdade**, os **olhos** e o **Word**. Faça cada uma pelo menos uma vez antes da apresentação.
+
+> Comece com o banco vazio (`rm -f cofre.db`) e siga a ordem abaixo: o 10.1 cadastra os usuários que os outros itens usam.
+
+### 10.1 Google Authenticator de verdade
+
+Os testes automáticos calculam o código TOTP com o mesmo algoritmo do app, já validado com os vetores do RFC 6238. Só o celular, porém, prova que o app aceita a chave e que os relógios batem.
+
+**Acertar os relógios**
+
+1. [ ] No Windows, abra **Configurações → Hora e idioma → Data e hora**, ative **Definir horário automaticamente** e clique em **Sincronizar agora**.
+2. [ ] No celular, deixe data e hora **automáticas**:
+   * Android: **Configurações → Sistema → Data e hora**.
+   * iPhone: **Ajustes → Geral → Data e Hora**.
+
+**Cadastrar a chave no app**
+
+1. [ ] Rode `java -jar cofre.jar` e cadastre o admin (seção 1.3) até aparecer o diálogo **Chave TOTP**.
+2. [ ] **Deixe o diálogo aberto.** A chave não é mostrada de novo depois que ele fecha.
+3. [ ] No app, toque em **+** → **Inserir chave de configuração** e preencha:
+   * **Nome da conta:** `admin@inf1416.puc-rio.br`.
+   * **Chave:** os 32 caracteres BASE32 do diálogo.
+   * **Tipo:** **Baseada no horário**.
+4. [ ] Toque em **Adicionar**. A conta aparece com um código de 6 dígitos que muda a cada 30 s.
+5. [ ] Só agora feche o diálogo da chave.
+
+> A chave BASE32 só usa as letras **A–Z** e os dígitos **2–7**. Se você leu `0`, é a letra **O**; se leu `1`, é a letra **I**. Espaços e letras minúsculas não atrapalham.
+
+**Entrar com o código do app**
+
+1. [ ] Na tela de login, entre com `admin@inf1416.puc-rio.br` e a senha `13572468` no teclado virtual.
+2. [ ] Na etapa 3, digite o código que o app mostra **agora** para a conta do admin. Deve abrir a **Tela Principal** (`4003 4002 1003 5001`).
+3. [ ] Ao cadastrar o **user01** e o **user02** (seção 3.2), repita o cadastro no app e entre uma vez com cada um. Cada usuário ganha uma conta separada no app: confira o nome da conta antes de copiar o código.
+
+**Margem de ±30 s com o app (seção 2.3)**
+
+1. [ ] Logo depois de o app trocar o código, **anote** o código novo.
+2. [ ] Espere o app trocar **uma vez**. Nos 30 s seguintes, digite o código anotado: ele deve ser **aceito**.
+3. [ ] Anote outro código, espere o app trocar **duas vezes** e digite o anotado. Deve aparecer "Token invalido (erro 1 de 3)." (`4004`).
+4. [ ] Digite o código atual para entrar. O acerto zera a contagem de erros de token.
+
+**Se um código correto for rejeitado:**
+
+* Confira se os dois relógios estão em hora automática: uma diferença acima de 30 s quebra o TOTP.
+* Confira se usou a conta certa no app (admin, user01 ou user02).
+* Se a chave foi digitada errada no app, não há como vê-la de novo. Apague o `cofre.db` e recomece pela seção 1.
+
+### 10.2 `logView`: frase secreta sem eco
+
+O `logView` lê a frase com `System.console()`, que só existe num terminal de verdade. Por isso os testes automáticos chamam a autenticação diretamente, e a digitação fica com você.
+
+1. [ ] Abra o **PowerShell** (não o Git Bash) e vá para a pasta `T3`.
+2. [ ] Rode:
+
+   ```powershell
+   java -jar logview.jar Pacote-T3\Keys\admin-pkcs8-aes.key
+   ```
+
+3. [ ] Em "Frase secreta da chave privada:", digite `admin`. **Nada aparece na tela** enquanto você digita, nem asteriscos. Tecle Enter.
+4. [ ] Confira a saída:
+   * "Administrador autenticado: admin@inf1416.puc-rio.br";
+   * o cabeçalho `Data Hora Codigo Mensagem`;
+   * os registros em ordem cronológica, com os acentos certos ("Sessão", "Autenticação");
+   * na última linha, "Total de registros: N".
+5. [ ] As últimas linhas devem corresponder ao que você acabou de fazer no cofre. Se o cofre foi fechado, o último registro é `1002 Sistema encerrado.`
+6. [ ] Rode de novo e digite `errada`, também sem eco. Deve aparecer "Autenticacao negada: frase secreta invalida para a chave privada informada."
+7. [ ] Rode com `Pacote-T3\Keys\user01-pkcs8-aes.key` e a frase `user01`. Deve aparecer "Autenticacao negada: a chave privada nao pertence a um administrador do sistema ...".
+
+### 10.3 Conferência visual das telas
+
+Os testes automáticos conferem textos, botões e códigos, mas não o visual. Compare cada tela com os desenhos do enunciado: cabeçalho, corpo 1 e corpo 2 separados por linhas.
+
+- [ ] **Partida (cadastro do admin):** título, "Total de usuários do sistema: 0", os 6 campos na ordem do enunciado, grupo desabilitado e botões `...` para escolher os arquivos.
+- [ ] **Confirmação do cadastro:** Versão, Série, Validade, Tipo de Assinatura, Emissor, Sujeito (Friendly Name), E-mail e Grupo legíveis, sem cortes.
+- [ ] **Etapa 2:** teclado igual ao do detalhamento (slide 13): 3 botões e **OK** na 1ª linha; 2 botões e **LIMPAR** na 2ª. O campo de senha mostra só marcadores, nunca os dígitos.
+- [ ] **Etapa 2 com 10 dígitos:** enquanto aparece "Verificando a senha...", a janela **não congela** (dá para arrastá-la). A primeira verificação depois de abrir o sistema pode levar alguns segundos (medimos cerca de 4 s); as seguintes, cerca de 1 s.
+- [ ] **Etapa 3:** o campo TOTP ignora letras e aceita no máximo 6 dígitos.
+- [ ] **Tela Principal, Consulta e Saída:** cabeçalho com Login, Grupo e Nome; corpo 1 e corpo 2 como no enunciado. Na Consulta, a tabela mostra nome secreto, dono e grupo.
+- [ ] **Grupo Usuário:** o menu do user01 e do user02 não tem a opção 1.
+- [ ] **Mensagens de erro:** cabem na caixa, sem texto cortado.
+
+### 10.4 Abrir os `.docx` decriptados no Word
+
+Os testes automáticos conferem que o arquivo gravado é um `.docx` válido. Vale abri-lo no Word (ou no LibreOffice) uma vez.
+
+1. [ ] Como **admin**, abra a Consulta, liste `Pacote-T3/Files` com a frase `admin` e clique duas vezes em `teste00.docx`.
+2. [ ] A mensagem mostra onde o arquivo foi gravado. Abra-o pelo Explorador de Arquivos ou, no PowerShell:
+
+   ```powershell
+   start Pacote-T3\Files\teste00.docx
+   ```
+
+3. [ ] O documento abre sem aviso de arquivo corrompido e diz: "Beleza! Arquivo pertence ao admin, do grupo administrador. [...] Sua rotina de decriptação está funcionando!"
+4. [ ] Como **user01**, abra `teste01.docx` e `teste02.docx`. O `teste02.docx` diz "Arquivo pertence ao user02": o user01 só consegue abri-lo pelo compartilhamento.
+5. [ ] Leia o `teste01.docx`: *"Outros integrantes do grupo usuários só poderão visualizar o conteúdo desse arquivo se o user01 fizer o respectivo compartilhamento"*. É a justificativa, escrita pelo professor, para o user02 receber **acesso negado** nesse arquivo (seção 4).
+6. [ ] Feche o Word e apague os arquivos decriptados antes da próxima rodada. Eles já ficam fora do git.
+
+   ```powershell
+   Remove-Item Pacote-T3\Files\*.docx
+   ```
