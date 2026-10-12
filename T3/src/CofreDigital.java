@@ -61,6 +61,14 @@ public class CofreDigital extends JFrame {
     }
 
     public static void main(String[] args) {
+        if (!Criptografia.suportaAES256()) {
+            System.err.println(Criptografia.mensagemSemAES256());
+            JOptionPane.showMessageDialog(null, Criptografia.mensagemSemAES256(), "Cofre Digital",
+                    JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
+            return;
+        }
+
         final BancoDeDados banco;
         try {
             banco = new BancoDeDados(BancoDeDados.ARQUIVO_PADRAO);

@@ -12,7 +12,7 @@ Só o que o enunciado permite: **Java SE (JDK)**, um **banco relacional (SQLite)
 
 | # | O quê | Para quê | Link |
 | :--- | :--- | :--- | :--- |
-| 1 | **JDK (Java SE) 8 ou superior** (testado com o JDK 23) | Compilar (`javac`, `jar`) e rodar (`java`) | [Oracle JDK](https://www.oracle.com/java/technologies/downloads/) ou [Eclipse Temurin](https://adoptium.net/temurin/releases/) |
+| 1 | **JDK (Java SE) 8u161 ou superior** (testado com o JDK 23) | Compilar (`javac`, `jar`) e rodar (`java`) | [Oracle JDK](https://www.oracle.com/java/technologies/downloads/) ou [Eclipse Temurin](https://adoptium.net/temurin/releases/) |
 | 2 | **Git for Windows** (inclui o **Git Bash**) | Rodar o `build.sh` e os comandos `sh` deste roteiro | [git-scm.com/download/win](https://git-scm.com/download/win) |
 | 3 | **BouncyCastle** `bcprov-jdk18on-1.86.jar` | Hash bcrypt da senha (`OpenBSDBCrypt`) | [Maven Central](https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.86/bcprov-jdk18on-1.86.jar) |
 | 4 | **SQLite JDBC** `sqlite-jdbc-3.53.4.0.jar` | Driver do banco SQLite (já traz o SQLite embutido, sem instalar nada) | [Maven Central](https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar) |
@@ -30,6 +30,8 @@ O instalador do JDK coloca só `java` e `javac` no PATH. O `build.sh` também pr
 4. Feche e reabra os terminais. Confira com `java -version`, `javac -version` e `jar --version`.
 
 > Sem o passo 3, o `build.sh` ainda funciona se `JAVA_HOME` estiver definido.
+
+> **Java 8 antigo instalado?** Confira se `java -version` mostra o JDK novo. Um Java 8 anterior ao update 161 limita o AES a 128 bits. Com ele, o cofre e o `logView` mostram "O Java em uso (1.8.0_...) limita o AES a 128 bits..." e encerram. Rode sempre com `java -jar` no terminal, sem duplo clique no `.jar`.
 
 ### Baixar as bibliotecas
 
@@ -159,7 +161,7 @@ Preencha os campos com os dados corretos do admin. Em cada linha, altere **apena
 - [ ] O botão **OK** só fica habilitado a partir de **8 dígitos**.
 - [ ] Com **10 dígitos**, os botões numéricos ficam desabilitados.
 - [ ] **LIMPAR** apaga o que foi digitado.
-- [ ] Senha correta (`13572468`): aparece "Verificando a senha..." (cerca de 1 s) e vai para a etapa 3. Códigos: `3003 3002 4001`.
+- [ ] Senha correta (`13572468`): aparece "Verificando a senha..." (menos de 1 s com 8 dígitos; cerca de 1 s com 10, pois são testadas as 2^n combinações) e vai para a etapa 3. Códigos: `3003 3002 4001`.
 
 ### 2.3 Etapa 3: token TOTP
 

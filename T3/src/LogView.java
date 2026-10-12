@@ -35,6 +35,9 @@ public class LogView {
             System.err.println("Uso: java -jar logview.jar <Caminho_Chave_Privada_Admin> [Caminho_Banco_de_Dados]");
             System.exit(1);
         }
+        if (!Criptografia.suportaAES256()) {
+            sair("Erro: " + Criptografia.mensagemSemAES256());
+        }
         String caminhoBanco = args.length == 2 ? args[1] : BancoDeDados.ARQUIVO_PADRAO;
         if (!new File(caminhoBanco).isFile()) {
             sair("Erro: banco de dados nao encontrado: " + caminhoBanco);

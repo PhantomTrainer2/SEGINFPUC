@@ -19,7 +19,8 @@ O **Cofre Digital** é uma aplicação Java (Swing) que protege uma *pasta segur
 
 ## 2. Requisitos e Bibliotecas
 
-* **JDK 1.8 (Java 8)** ou superior. O código gera bytecode Java 8 e foi testado num runtime Java 8 (Temurin 1.8.0_504).
+* **JDK 1.8 (Java 8) update 161** ou superior. O código gera bytecode Java 8 e foi testado num runtime Java 8 (Temurin 1.8.0_504) e no JDK 23.
+  * Java 8 anterior ao update 161 limita o AES a 128 bits (política de criptografia restrita). Nesse caso, o cofre e o `logView` avisam e encerram, em vez de falhar com "frase secreta inválida".
 * Bibliotecas na pasta `lib/` (não versionadas no git):
 
 | Biblioteca | Uso | Download (Maven Central) |
@@ -113,6 +114,7 @@ Frases secretas das chaves do pacote: `admin`, `user01` e `user02`.
 | Administrador do sistema | O usuário cadastrado na partida (menor UID do grupo Administrador). O `logView` aceita a chave de qualquer usuário do grupo Administrador. |
 | Erros consecutivos e bloqueio | Ficam no banco (`erros_senha`, `erros_token`, `bloqueado_ate`). Continuam valendo se o sistema for reiniciado e são zerados no bloqueio. |
 | Ordem do cadastro | Senha → certificado → chave privada → confirmação → login único → gravação. |
+| "Frase secreta do administrador mantida em memória" | A frase é validada na partida e usada uma única vez para restaurar a chave privada do administrador. A memória guarda o objeto `PrivateKey` (o que o sistema realmente precisa para abrir `index.env` e `share.env`), e o `char[]` da frase é zerado logo em seguida. No encerramento, a referência à chave é apagada. |
 
 ---
 

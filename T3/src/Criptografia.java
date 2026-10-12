@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
@@ -58,6 +59,24 @@ public final class Criptografia {
     }
 
     private Criptografia() {
+    }
+
+    /**
+     * JREs 8 anteriores ao update 161 vem com a politica de criptografia
+     * restrita (AES limitado a 128 bits): sem esta checagem, a falha ao usar
+     * a chave AES de 256 bits apareceria como "frase secreta invalida".
+     */
+    static boolean suportaAES256() {
+        try {
+            return Cipher.getMaxAllowedKeyLength("AES") >= 256;
+        } catch (NoSuchAlgorithmException e) {
+            return false;
+        }
+    }
+
+    static String mensagemSemAES256() {
+        return "O Java em uso (" + System.getProperty("java.version") + ") limita o AES a 128 bits, mas o Cofre "
+                + "Digital usa chaves AES de 256 bits. Execute com o Java 8u161 ou superior.";
     }
 
     /**
