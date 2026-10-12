@@ -1,284 +1,234 @@
 # Roteiro da Apresentação: Cofre Digital
 
-Explicação do código, organizada na ordem em que o sistema é usado. Cada seção relaciona **o que o enunciado pede** com **como foi implementado** e **onde está** (`Arquivo.metodo()`).
+* **Parte 1:** o que mostrar, na ordem, e o que falar em cada passo.
+* **Parte 2:** como funciona por dentro, para quando o professor perguntar (`Arquivo.metodo()`).
+* **Partes 3 a 5:** decisões de interpretação, como o trabalho foi validado e perguntas prováveis.
 
 ---
 
-## 1. Arquitetura
+## Parte 1. Demonstração
 
-O código foi organizado em quatro camadas, cada uma com uma responsabilidade:
+**Antes de começar:** `./build.sh`, `rm -f cofre.db`, Google Authenticator aberto e um PowerShell na pasta `T3` para o `logView`. Os passos detalhados e os códigos esperados estão no `HowToTest.md`.
+
+| # | Mostrar | O que dizer |
+| :--- | :--- | :--- |
+| 1 | `java -jar cofre.jar` com banco vazio: cadastro do admin (grupo fixo, sem botão voltar) | Sem usuários, a partida cadastra o administrador. A chave privada dele fica em memória porque `index` e `share` são protegidos com as chaves do admin. |
+| 2 | Cadastro com frase errada e depois com a chave de outro usuário | A frase é testada decriptando a chave. O par chave/certificado é testado assinando 10240 bytes aleatórios e verificando com a chave pública do certificado. |
+| 3 | Dados corretos → tela de confirmação → Confirmar → chave BASE32 no celular | Mostra versão, série, validade, tipo de assinatura, emissor, sujeito e e-mail. A chave TOTP tem 20 bytes aleatórios, vai em BASE32 e é guardada cifrada com AES derivado da senha. |
+| 4 | Login do admin: e-mail → teclado virtual → TOTP | 5 botões com 2 dígitos, redistribuídos a cada clique. O sistema testa as 2ⁿ senhas possíveis no bcrypt. O TOTP aceita ±30 s. |
+| 5 | Opção 1: cadastrar user01 e user02 | Login extraído do certificado e único. O formulário volta vazio após o sucesso. |
+| 6 | Opção 2 como admin (`Pacote-T3/Files`, frase `admin`): abrir `teste00.docx` | `index` e `share` abertos com as chaves do admin. O arquivo abre pelo envelope do dono e tem a assinatura verificada. |
+| 7 | Encerrar Sessão → user01: abrir `teste01` e `teste02` | `teste01` abre pelo `.env` (dono) e `teste02` pelo `.1.shr` (compartilhamento). |
+| 8 | user02: abrir `teste01` | Aparece por ser do mesmo grupo, mas dá **acesso negado**: não há envelope cifrado para a chave do user02. |
+| 9 | 3 senhas erradas → bloqueio; outro usuário entra normalmente | Erros consecutivos contados no banco; bloqueio de 2 min só para quem errou. |
+| 10 | Pasta `FilesTeste` com um `.enc` adulterado | A decriptação "funciona", mas a assinatura do dono não confere (7021) e nada é gravado. |
+| 11 | Opção 3 → Encerrar Sistema → reiniciar | A partida pede a frase do admin. Com frase errada, o sistema avisa e encerra. |
+| 12 | `java -jar logview.jar Pacote-T3\Keys\admin-pkcs8-aes.key` | Programa separado, só para o admin, frase sem eco, teste de 2048 bytes, registros em ordem cronológica. |
+
+---
+
+## Parte 2. Como funciona
+
+### 2.1 Arquitetura
 
 | Camada | Arquivos | Papel |
 | :--- | :--- | :--- |
-| Interface (Swing) | `CofreDigital`, `Tela*`, `Componentes` | Telas, botões e navegação; registra os eventos de tela |
-| Regras | `Autenticador`, `ServicoCadastro`, `PastaSegura` | Etapas da autenticação, cadastro, acesso aos arquivos |
-| Criptografia | `Criptografia`, `TOTP`, `Base32` | Operações da JCA (AES, RSA, assinatura, X.509) e TOTP |
-| Persistência | `BancoDeDados`, `Usuario` | SQLite via JDBC: 5 tabelas e registros |
+| Interface (Swing) | `CofreDigital`, `Tela*`, `Componentes` | Telas e navegação; cada tela registra seu código |
+| Regras | `Autenticador`, `ServicoCadastro`, `PastaSegura` | Autenticação, cadastro, acesso aos arquivos |
+| Criptografia | `Criptografia`, `TOTP`, `Base32` | JCA do JDK (AES, RSA, assinatura, X.509) e TOTP |
+| Persistência | `BancoDeDados`, `Usuario` | SQLite via JDBC: 5 tabelas |
 
-* **`LogView`** é um programa à parte, gerado num jar separado (`logview.jar`).
-* **Bibliotecas externas:** só BouncyCastle (bcrypt) e o driver do SQLite. Todo o resto vem do JDK 8.
+* **Bibliotecas externas:** só BouncyCastle (`OpenBSDBCrypt`) e o driver JDBC do SQLite. O resto é do JDK.
+* **`LogView`:** sai num jar próprio (`logview.jar`). O `cofre.jar` não contém essa classe.
 
----
+### 2.2 Blocos criptográficos (`Criptografia`)
 
-## 2. Base criptográfica (`Criptografia`)
+Quase todo requisito se apoia em cinco operações:
 
-Quase todo requisito do trabalho se apoia em quatro operações.
-
-### 2.1 Chave AES a partir de uma semente: `gerarChaveAES()`
-
-O enunciado pede AES de 256 bits gerado com **SHA1PRNG** a partir de uma frase, senha ou semente.
+| Operação | Como | Método |
+| :--- | :--- | :--- |
+| Chave AES de 256 bits a partir de uma semente | `SHA1PRNG` + `KeyGenerator("AES").init(256, prng)` | `gerarChaveAES()` |
+| Restaurar a chave privada | AES/ECB/PKCS5 com a chave da frase → PEM → BASE64 → `PKCS8EncodedKeySpec` → `KeyFactory("RSA")` | `restaurarChavePrivada()` |
+| Validar a chave privada | Assina N bytes aleatórios (SHA1withRSA) e verifica com a chave pública do certificado | `validarChavePrivada()` |
+| Abrir envelope | RSA/ECB/PKCS1Padding com a chave privada → semente do SHA1PRNG | `abrirEnvelope()` |
+| Verificar assinatura | `Signature("SHA1withRSA")` com a chave pública | `verificarAssinatura()` |
 
 ```java
 SecureRandom prng = SecureRandom.getInstance("SHA1PRNG");
-prng.setSeed(semente);          // semente definida antes de qualquer uso => sequencia deterministica
+prng.setSeed(semente);        // semente antes de qualquer uso => sequencia deterministica
 KeyGenerator gerador = KeyGenerator.getInstance("AES");
-gerador.init(256, prng);
-return gerador.generateKey();   // mesma semente => mesma chave
+gerador.init(256, prng);      // mesma semente => mesma chave
 ```
 
-Essa mesma função é usada em três lugares:
+* **Sementes usadas:**
+  * **Frase secreta:** gera a chave que decripta o arquivo `.key`.
+  * **Senha pessoal:** gera a chave que cifra e decifra a chave TOTP guardada no banco.
+  * **Semente do envelope:** gera a chave que decripta os arquivos `.enc`.
+* **Tamanho do teste de assinatura:**
+  * **10240 bytes:** cadastro, partida e consulta.
+  * **2048 bytes:** `logView`.
+* **Motivo da falha na validação:**
+  * Falha ao decriptar → frase inválida (6006).
+  * Assinatura que não confere → par inválido (6007).
+* **Checagem de AES-256 (`suportaAES256()`):** Java 8 anterior ao update 161 limita o AES a 128 bits. Sem essa checagem, a frase **certa** apareceria como "frase secreta inválida". Agora o cofre e o `logView` avisam a versão do Java e encerram.
 
-| Semente | Para que serve a chave gerada |
-| :--- | :--- |
-| Frase secreta | Decriptar o arquivo da chave privada |
-| Senha pessoal | Cifrar e decifrar a chave TOTP no banco |
-| Semente do envelope | Decriptar os arquivos `.enc` |
+### 2.3 Partida (`CofreDigital`)
 
-### 2.2 Restaurar a chave privada: `restaurarChavePrivada()`
+1. `main()` checa o AES-256, abre o banco e registra 1001.
+2. `partida()` segue um de dois caminhos:
+   * **Sem usuários:** registra 1005 e 6001 e abre `TelaCadastro` em modo partida.
+   * **Com usuários:** registra 1006, e `validarFraseAdministrador()` valida a frase do admin com a chave guardada no Chaveiro. Se a validação falhar, o sistema avisa e encerra (1002).
+3. A chave privada do admin fica em memória para abrir `index.env` e `share.env`. `encerrarSistema()` apaga a referência e registra 1004 (se houver sessão) e 1002.
 
-O caminho segue o slide 10 do detalhamento:
+### 2.4 Cadastro (`ServicoCadastro`, `TelaCadastro`)
 
-1. O arquivo `.key` é decriptado com AES/ECB/PKCS5Padding, usando a chave derivada da frase. O resultado é um PEM `-----BEGIN PRIVATE KEY-----`.
-2. O conteúdo é decodificado de BASE64.
-3. Os bytes PKCS8 viram uma `PKCS8EncodedKeySpec`.
-4. `KeyFactory("RSA")` gera o `PrivateKey`.
+| Fase | O que faz | Registros |
+| :--- | :--- | :--- |
+| `validar()` | Senha (`criticarSenha()`: 8 a 10 dígitos, sem iguais seguidos, igual à confirmação) → certificado (e-mail e CN do **Sujeito**) → arquivo da chave → `validarChavePrivada(10240)` | 6003 a 6007 |
+| `confirmarDados()` | Mostra os campos do certificado; Confirmar ou Rejeitar | 6008 / 6009 |
+| `efetivar()` | Login único → bcrypt → chave TOTP cifrada → usuário + Chaveiro numa transação | — |
 
-Se a frase estiver errada, a decriptação falha (padding inválido) ou o resultado não é um PEM válido.
+* **Senha:** `OpenBSDBCrypt.generate("2y", senha, salt de 16 bytes, 8)` gera `$2y$08$...` (60 caracteres). Só o hash é gravado.
+* **Chave TOTP:** 20 bytes aleatórios → BASE32 → AES com a chave derivada da senha → `Usuarios.token_cifrado`.
+* **Chaveiro:** KID único, certificado em PEM e chave privada no binário cifrado original. O KID também vai para `Usuarios`.
+* **Depois do cadastro:** `mostrarChaveTotp()` mostra o BASE32 e a URI `otpauth://totp/Cofre%20Digital:<login>?secret=...`. Formulário vazio após sucesso; preenchido após erro ou rejeição.
 
-### 2.3 Validar a chave privada: `validarChavePrivada()`
+### 2.5 Autenticação (`Autenticador`, `TelaLogin`, `TelaSenha`, `TelaToken`)
 
-O enunciado pede que a frase seja testada e que a chave seja verificada assinando um array aleatório:
+**Etapa 1, `identificarUsuario()`:**
+* E-mail inválido ou inexistente → 2005, fica na etapa 1.
+* Usuário bloqueado → 2004, fica na etapa 1.
+* Login aceito → 2003 e vai para a etapa 2.
 
-1. Restaura a chave. Se falhar, a causa é `FRASE_SECRETA_INVALIDA` (registro 6006).
-2. `verificarParDeChaves()` assina um array aleatório com **SHA1withRSA** e verifica a assinatura com a chave pública do certificado. Se não conferir, a causa é `ASSINATURA_INVALIDA` (registro 6007).
-
-O tamanho do array muda conforme o uso:
-* **10240 bytes:** cadastro, partida do sistema e consulta.
-* **2048 bytes:** `logView`.
-
-### 2.4 Certificado, envelope e assinatura
-
-* **`extrairPEMCertificado()` + `carregarCertificado()`:** recortam só o bloco PEM (os `.crt` do pacote têm um texto antes dele) e usam `CertificateFactory("X.509")`.
-* **`extrairEmail()` / `extrairNome()`:** pegam o login name (EMAILADDRESS) e o nome (CN) do campo **Sujeito**, como pede o enunciado.
-* **`abrirEnvelope()`:** RSA/ECB/PKCS1Padding com a chave privada. Devolve a semente do SHA1PRNG.
-* **`verificarAssinatura()`:** `Signature("SHA1withRSA")`.
-
----
-
-## 3. Partida do sistema (`CofreDigital`)
-
-O fluxo começa em `main()`:
-
-1. Abre o banco e registra 1001.
-2. Chama `partida()`, que tem dois caminhos:
-   * **Banco sem usuários:** registra 1005 e 6001 e abre `TelaCadastro` em modo partida. O grupo fica fixo em Administrador e não há botão de voltar.
-   * **Com usuários:** registra 1006 e chama `validarFraseAdministrador()`. Ela pede a frase do admin e valida a chave guardada no Chaveiro. Se a validação falhar, o sistema avisa e encerra.
-
-**Por que a chave do admin fica em memória:** o `index` e o `share` são protegidos com as chaves do administrador. Sem a chave privada dele, nenhum usuário consegue listar a pasta.
-* No primeiro cadastro, a chave chega por `definirChavesAdministrador()`.
-* `encerrarSistema()` apaga as referências da memória e registra 1004 (se houver sessão aberta) e 1002.
-
----
-
-## 4. Cadastro de usuários (`ServicoCadastro`, `TelaCadastro`)
-
-O enunciado pede uma ordem de validação, confirmação dos dados do certificado, login único e armazenamento da senha, do token e do par chave/certificado. O processo tem duas fases.
-
-### 4.1 `validar()`: critica os dados, sem gravar nada
-
-1. **`criticarSenha()`:** exige 8 a 10 dígitos, sem dígitos iguais em sequência, e igual à confirmação. Falha: 6003.
-2. **Certificado:** lê o arquivo e extrai e-mail e nome. Falha: 6004.
-3. **Arquivo da chave privada:** lê o arquivo. Falha: 6005.
-4. **Chave privada:** chama `validarChavePrivada(..., 10240)`. Falha: 6006 ou 6007.
-
-### 4.2 Confirmação na tela: `TelaCadastro.confirmarDados()`
-
-Mostra os campos do certificado: versão, série, validade, tipo de assinatura, emissor, sujeito e e-mail. Confirmar registra 6008; rejeitar registra 6009.
-
-### 4.3 `efetivar()`: grava o usuário
-
-1. **Login único:** se o login já existe, o cadastro é recusado.
-2. **Senha:** `OpenBSDBCrypt.generate("2y", senha, salt de 16 bytes, custo 8)` gera `$2y$08$...` com 60 caracteres. Só o hash vai para o banco.
-3. **Chave TOTP:**
-   1. Gera 20 bytes aleatórios.
-   2. Codifica em BASE32.
-   3. Cifra com AES, usando a chave derivada da **senha pessoal**.
-   4. Grava em `Usuarios.token_cifrado`.
-4. **Par chave/certificado:** `BancoDeDados.inserirUsuario()` grava, numa única transação, o usuário e o Chaveiro (KID único, certificado em PEM e chave privada no formato binário original) e associa o KID ao usuário.
-
-Depois do cadastro, `TelaCadastro.mostrarChaveTotp()` apresenta o BASE32 e a URI `otpauth://` para o Google Authenticator.
-
----
-
-## 5. Autenticação em 3 etapas (`Autenticador`, `TelaLogin/Senha/Token`)
-
-### Etapa 1: `identificarUsuario()`
-
-* **Login inválido ou inexistente:** registra 2005 e continua na etapa 1.
-* **Usuário bloqueado:** registra 2004 e continua na etapa 1.
-* **Login aceito:** registra 2003 e vai para a etapa 2.
-
-### Etapa 2: teclado virtual sobrecarregado
-
-**Tela (`TelaSenha`):**
-* `redistribuir()` embaralha os dígitos 0 a 9 com `SecureRandom` e os distribui em 5 pares, sem repetição.
-* Cada clique guarda **o par**, nunca o dígito, e chama `redistribuir()` de novo.
-
-**Verificação (`Autenticador.buscarSenha()`):** com n cliques há **2ⁿ senhas possíveis**. Todas são testadas contra o hash bcrypt.
-
-```java
-IntStream.range(0, 1 << pares.size()).parallel()
-         .filter(mascara -> confere(hash, pares, mascara))   // OpenBSDBCrypt.checkPassword
-         .findAny();
-// montarCandidata(): o bit i da mascara escolhe qual digito do i-esimo par entra na candidata
-```
-
-* **Por que em paralelo:** bcrypt é lento de propósito. Com 10 dígitos, um teste sequencial levava 13 s; em paralelo, cerca de 1,3 s.
-* **Interface sem travar:** a verificação roda num `SwingWorker` (`TelaSenha.confirmar()`).
-* **A senha que confere é devolvida:** ela é necessária na etapa 3 para decifrar a chave TOTP.
-
-### Etapa 3: TOTP (classe `TOTP`, só com `Mac`, `SecretKeySpec`, `Date` e `Base32`)
-
-* **`TOTPCode(t)`:** o contador t vira 8 bytes big-endian e passa por `HMAC_SHA1(contador, chave)`.
-* **`getTOTPCodeFromHash()`:** faz o truncamento dinâmico da RFC 4226.
+**Etapa 2, teclado sobrecarregado:**
+* **Tela:** `TelaSenha.redistribuir()` embaralha 0 a 9 com `SecureRandom` em 5 pares. Cada clique guarda **o par** (nunca o dígito) e redistribui.
+* **Verificação:** com n cliques há 2ⁿ senhas possíveis. `buscarSenha()` testa todas no bcrypt, em paralelo e num `SwingWorker`. Leva menos de 1 s com 8 dígitos e cerca de 1 s com 10.
 
   ```java
-  int offset = hash[hash.length - 1] & 0x0F;                 // 4 bits finais indicam a posicao
-  int binary = ((hash[offset] & 0x7F) << 24) | ... ;          // 31 bits a partir dali
-  String code = Integer.toString(binary % 1000000);          // 6 digitos + zeros a esquerda
+  IntStream.range(0, 1 << pares.size()).parallel()
+           .filter(mascara -> confere(hash, pares, mascara))  // OpenBSDBCrypt.checkPassword
+           .findAny();
+  // montarCandidata(): o bit i da mascara escolhe o digito do i-esimo par
   ```
 
-* **`validateCode()`:** t = segundos desde 1970 ÷ 30. Compara o código com **t, t−1 e t+1**, o que dá a margem de ±30 s pedida.
-* **`Autenticador.tokenConfere()`:**
-  1. Deriva a chave AES da senha.
-  2. Decifra `token_cifrado`.
-  3. Usa `new TOTP(base32, 30).validateCode(codigo)`.
+* **A senha que confere é devolvida**, porque a etapa 3 precisa dela para decifrar a chave TOTP.
 
-A implementação foi validada com os vetores de teste da RFC 6238.
+**Etapa 3, TOTP:** a classe `TOTP` segue a estrutura do anexo e usa só `Mac`, `SecretKeySpec`, `Date` e `Base32`.
+* **`TOTPCode(t)`:** HMAC-SHA1 do contador t em 8 bytes big-endian.
+* **`getTOTPCodeFromHash()`:** truncamento dinâmico da RFC 4226. Os 4 bits finais dão o offset; 31 bits a partir dali, `% 1000000` e zeros à esquerda.
+* **`validateCode()`:** t = segundos desde 1970 ÷ 30. Compara com t−1, t e t+1, o que dá a margem de ±30 s.
+* **`tokenConfere()`:** chave AES da senha → decifra `token_cifrado` → `new TOTP(base32, 30).validateCode()`.
 
-### Erros e bloqueio: `verificarSenha()` / `verificarToken()` / `bloquear()`
+**Erros e bloqueio, `verificarSenha()` / `verificarToken()` / `bloquear()`:**
+* **Cada erro:** incrementa `erros_senha` ou `erros_token` no banco (3004 a 3006, 4004 a 4006). Um acerto zera o contador, o que garante os "erros consecutivos".
+* **3º erro:** `bloqueado_ate = agora + 2 min`, contadores zerados, registra 3007 ou 4007 e volta à etapa 1.
+* **Persistência:** como fica no banco, vale para aquele usuário mesmo após reiniciar. Os outros continuam entrando.
+* **Sessão:** com a autenticação completa, `iniciarSessao()` incrementa `total_acessos` e registra 1003.
 
-* **Contadores de erro:** cada erro incrementa `erros_senha` ou `erros_token` no banco (3004 a 3006, 4004 a 4006). Um acerto zera o contador, o que garante a regra de "erros consecutivos".
-* **No 3º erro:** `bloqueado_ate = agora + 2 min`, os contadores são zerados e são registrados 3007 ou 4007. O sistema volta para a etapa 1.
-* **Persistência:** como fica no banco, o bloqueio vale para aquele usuário mesmo após reiniciar. Os outros usuários continuam podendo entrar.
+### 2.6 Telas (`Componentes.montarTela()`: cabeçalho, corpo 1, corpo 2)
 
-Com a autenticação completa, `CofreDigital.iniciarSessao()` incrementa `total_acessos` e registra 1003.
-
----
-
-## 6. Telas da sessão (`Componentes.montarTela()`)
-
-Todas as telas seguem o formato do enunciado:
-* **Cabeçalho:** login, grupo e nome.
-* **Corpo 1:** um total.
-* **Corpo 2:** o conteúdo da tela.
-
-| Tela | Corpo 1 | Detalhe |
+| Tela | Corpo 1 | Corpo 2 |
 | :--- | :--- | :--- |
-| `TelaPrincipal` | Total de acessos | A opção 1 só aparece se `usuario.isAdministrador()` |
-| `TelaCadastro` | Total de usuários | Formulário vazio após sucesso, preenchido após erro |
-| `TelaConsulta` | Total de acessos | O corpo 2 começa com o total de consultas, que conta 1 a cada clique em Listar |
-| `TelaSaida` | Total de acessos | Encerrar Sessão volta à etapa 1; Encerrar Sistema fecha |
+| Principal | Total de acessos do usuário | Menu: a opção 1 só aparece para o grupo Administrador |
+| Cadastro | Total de usuários do sistema | Formulário de Cadastro |
+| Consulta | Total de acessos do usuário (igual à Principal, como pede o texto) | Total de consultas, pasta, frase, Listar, tabela (nome, dono, grupo) |
+| Saída | Total de acessos do usuário | Mensagem do enunciado + Encerrar Sessão / Encerrar Sistema / Voltar |
 
-* A navegação fica em `CofreDigital.mostrarTela*()`, e cada método registra o código da tela (5001, 6001, 7001, 8001).
-* Os campos têm limite de tamanho (255 e 10 caracteres) via `Componentes.limitar()`.
+* Os textos e os nomes dos botões seguem o enunciado (ex.: "Voltar de Cadastrar para o Menu Principal").
+* Os campos têm limite de 255 caracteres (10 para a senha).
 
----
+### 2.7 Pasta segura (`PastaSegura`, `TelaConsulta`)
 
-## 7. Pasta segura (`PastaSegura`, `TelaConsulta`)
+**Listar (`TelaConsulta.listar()` → `PastaSegura.listar()`):**
+1. Valida a frase do usuário como no cadastro e restaura a chave privada dele. Falha: 6006 ou 6007.
+2. Verifica o caminho da pasta. Falha: 7004.
+3. `abrirArquivoDeControle()` abre o `index` e o `share` com as chaves do **admin**:
+   * **Decriptação:** `.env` + chave privada do admin → semente → AES → decripta o `.enc`. Registra 7005 / 7010; falha 7007 / 7012.
+   * **Verificação:** confere o `.asd` com a chave pública do admin. Registra 7006 / 7011; falha 7008 / 7013.
+4. Mostra os arquivos de que o usuário é **dono**, os do **mesmo grupo** (`normalizar()` iguala "Usuário" e "usuario") e os que estão no `share` com o login dele.
 
-### 7.1 Listar: `TelaConsulta.listar()` → `PastaSegura.listar()`
+**Abrir (`decriptarArquivo()`):**
 
-1. **Valida a frase do usuário** com `validarChaveDoUsuario()`, do mesmo jeito que no cadastro. Isso também restaura a chave privada dele, que será usada para abrir os envelopes.
-2. **Verifica o caminho da pasta.** Falha: 7004.
-3. **Abre o `index` e o `share`** com `abrirArquivoDeControle()`, usando as chaves do **administrador** (slides 8 e 9):
-   * `.env` + chave privada do admin → semente → `gerarChaveAES` → decripta `.enc`. Registra 7005 ou 7010; falha 7007 ou 7012.
-   * Verifica `.asd` com a chave pública do admin. Registra 7006 ou 7011; falha 7008 ou 7013.
-4. **Filtra a lista.** Um arquivo aparece se o usuário for o **dono**, se for do **mesmo grupo** (`normalizar()` compara "Usuário" com "usuario"), ou se houver uma linha no `share` com o login dele.
+| Relação com o arquivo | Envelope usado | Resultado |
+| :--- | :--- | :--- |
+| Dono | `codigo.env` | 7016 → decripta |
+| Compartilhado | `codigo.N.shr` | 7016 → decripta |
+| Só do mesmo grupo / outro | nenhum | 7017, acesso negado |
 
-### 7.2 Abrir: `PastaSegura.decriptarArquivo()`
+* **Decriptação com a chave privada do usuário:** registra 7018; falha 7020 (**sigilo**).
+* **Assinatura verificada com o certificado do dono:** registra 7019; falha 7021 (**integridade e autenticidade**).
+* **Gravação:** só se tudo conferir, com o nome secreto, na própria pasta. `nomeSeguro()` bloqueia caminhos como `../`.
 
-1. **Escolhe o envelope** conforme a relação do usuário com o arquivo:
-   * **Dono:** usa `codigo.env`.
-   * **Compartilhado:** usa `codigo.N.shr`.
-   * **Outro caso:** **acesso negado** (7017). Quem é só do mesmo grupo vê o arquivo, mas não tem envelope cifrado para a sua chave.
-2. **Decripta com a chave privada do usuário.** Registra 7018; falha 7020 (**sigilo**).
-3. **Verifica a assinatura com o certificado do dono**, buscado no Chaveiro. Registra 7019; falha 7021 (**integridade e autenticidade**).
-4. **Grava o arquivo** com o nome secreto na pasta. `nomeSeguro()` impede caminhos como `../`.
+### 2.8 Banco e registros (`BancoDeDados`)
 
----
-
-## 8. Banco de dados (`BancoDeDados`)
-
-| Tabela | Conteúdo principal |
+| Tabela | Conteúdo |
 | :--- | :--- |
-| `Usuarios` | UID, login (único), nome, GID, KID, `senha_hash` (bcrypt), `token_cifrado`, totais, contadores de erro, `bloqueado_ate` |
-| `Chaveiro` | KID, UID, certificado PEM, chave privada cifrada (BLOB) |
+| `Usuarios` | UID, login único, nome, GID, KID, hash bcrypt, token cifrado, totais, contadores de erro, `bloqueado_ate` |
+| `Chaveiro` | KID, UID, certificado PEM, chave privada cifrada |
 | `Grupos` | 1 = Administrador, 2 = Usuário |
-| `Mensagens` | As 64 mensagens da tabela do anexo (MID → texto) |
-| `Registros` | RID, MID, data/hora, UID, login, arquivo. **Sem o texto da mensagem**, como exige o enunciado |
+| `Mensagens` | As 64 mensagens do anexo (MID → texto) |
+| `Registros` | RID, MID, data/hora, UID, login, arquivo. **Sem o texto da mensagem** |
 
-* **`registrar(mid, login, arquivo)`:** grava cada operação e preenche o UID por subconsulta quando o login existe. O código 2005 (login não identificado) também guarda o login digitado.
-* **Proteção contra injeção de SQL:** toda consulta que recebe dados digitados usa `PreparedStatement`.
+* **`registrar()`:** grava cada operação. O código 2005 guarda o login digitado.
+* **Injeção de SQL:** todas as consultas com dados digitados usam `PreparedStatement`.
 
----
+### 2.9 `LogView`
 
-## 9. Programa de auditoria (`LogView`)
-
-O enunciado pede um programa separado, que só o admin executa, autenticado com chave e certificado, com a frase lida sem eco e um teste de 2048 bytes.
-
-1. Recebe o caminho da chave pela linha de comando.
-2. Lê a frase com `System.console().readPassword()`, que não mostra o que é digitado.
-3. **`autenticarAdministrador()`:**
-   1. Restaura a chave.
-   2. Testa a chave contra o certificado de cada usuário do grupo Administrador, com 2048 bytes.
-   3. Se nenhum conferir, encerra.
-4. **`exibirRegistros()`:** mostra os registros em ordem cronológica, juntando `Registros` com `Mensagens` e trocando `<login_name>` e `<arq_name>` pelos valores gravados.
-5. **Separação real:** o `build.sh` gera dois jars. O `logview.jar` leva só o `LogView` e as classes de apoio (banco e criptografia), sem nenhuma tela do cofre. O `cofre.jar` não contém o `LogView`.
+1. Recebe o caminho da chave privada na linha de comando.
+2. Lê a frase com `System.console().readPassword()`, sem eco.
+3. `autenticarAdministrador()` restaura a chave e testa com 2048 bytes contra o certificado de cada administrador. Se nenhum conferir, encerra.
+4. `exibirRegistros()` junta `Registros` com `Mensagens`, troca `<login_name>` e `<arq_name>` pelos valores e mostra tudo em ordem cronológica.
 
 ---
 
-## 10. Cuidados extras de segurança
+## Parte 3. Decisões de interpretação
 
-* **Senhas, frases e sementes como `char[]`/`byte[]`:** são apagadas com `Arrays.fill` depois do uso. Uma `String` não pode ser apagada.
-* **Teclado virtual:** guarda só os pares pressionados; o dígito escolhido nunca existe na memória da tela.
-* **Arquivos adulterados:** quando a verificação falha, o conteúdo decriptado **não é gravado**.
-* **Compatibilidade:** os fontes estão em ASCII puro e foram compilados com `--release 8`, o que garante compatibilidade com o JDK 1.8 do professor (o sistema foi testado num runtime Java 8 real).
+| Ponto do enunciado | Decisão e justificativa |
+| :--- | :--- |
+| Arquivo do grupo: ver × abrir | Aparece na lista (política de listagem), mas só abre quem tem envelope: o dono (`.env`) ou o compartilhado (`.shr`). Os demais recebem acesso negado (7017). Tecnicamente não há como abrir sem envelope. |
+| "Sequências de números repetidos" | Rejeita dígitos iguais seguidos (`11`), o que também cobre `11111111`. |
+| "Frase do admin mantida em memória" | A frase é usada uma vez para restaurar a `PrivateKey`, que é o que o sistema precisa. O `char[]` da frase é zerado; a chave é apagada ao encerrar. |
+| Corpo da tela de consulta | O texto pede "o mesmo corpo 1 da Tela Principal": total de acessos no corpo 1 e total de consultas no início do corpo 2. |
+| Frase errada na consulta (sem código próprio) | Usa 6006 / 6007, cujos textos descrevem exatamente o evento. |
+| Total de acessos / consultas | Acesso = sessão iniciada (1003). Consulta = cada clique em Listar. |
+| Administrador do sistema | O primeiro cadastrado (partida). O `logView` aceita a chave de qualquer usuário do grupo Administrador. |
+| Registro 6001 na partida | A tela de cadastro do admin também registra 6001, sem login (ainda não há usuário). |
+| QR Code | Opcional no enunciado; não foi feito. O sistema mostra o BASE32 e a URI `otpauth`. |
 
 ---
 
-## 11. Perguntas prováveis
+## Parte 4. Como foi validado
 
-* **Por que o admin digita a frase ao iniciar o sistema?**
-  O `index` e o `share` têm envelope e assinatura do admin. Sem a chave privada dele em memória, ninguém lista a pasta.
+* **Teste automatizado da interface (190 verificações):** dirigiu a interface Swing do início ao fim (cadastros, 3 etapas, bloqueios, consultas com os três usuários, saída e reinício) e conferiu os códigos gravados em `Registros` a cada passo.
+* **TOTP:** confere com os vetores de teste da RFC 6238.
+* **bcrypt:** confere o exemplo do enunciado (`$2y$08$ajDZ...`).
+* **Base32:** idêntica, token a token, ao anexo do enunciado.
+* **Adulteração:** 10 casos (alterar `.asd`, `.enc`, `.env`, `.shr`, `index`, `share`) detectados com o código certo.
+* **Compatibilidade:** compilado com `--release 8` (bytecode Java 8, assim como as bibliotecas). Requer Java 8u161 ou superior, por causa do AES-256.
 
-* **Como funciona o teclado com dois dígitos por botão?**
+---
+
+## Parte 5. Perguntas prováveis
+
+* **Por que o admin digita a frase ao iniciar?**
+  `index` e `share` têm envelope e assinatura do admin. Sem a chave privada dele em memória, ninguém lista a pasta.
+* **Por que guardar a `PrivateKey` e não a frase?**
+  O objetivo do enunciado é ter acesso à chave durante a execução. Guardar a chave já restaurada evita manter a frase em texto, e ela é apagada ao encerrar.
+* **Como o teclado com 2 dígitos por botão verifica a senha?**
   Guardamos os pares clicados e testamos as 2ⁿ combinações no bcrypt, em paralelo. Quem olha a tela não descobre os dígitos.
-
-* **Onde fica a chave do TOTP e como ela é protegida?**
-  Fica no banco em BASE32, cifrada com AES. A chave AES é derivada da senha pessoal, por isso a etapa 3 depende da etapa 2.
-
-* **Como funciona a tolerância de ±30 s?**
-  `validateCode()` compara o código com os intervalos t−1, t e t+1.
-
-* **Por que o user02 vê o `teste01.docx` mas não consegue abrir?**
-  Ele vê por ser do mesmo grupo. Mas o envelope `.env` foi cifrado com a chave pública do dono (user01), e não existe `.shr` para o user02.
-
-* **E se alguém alterar um `.enc`?**
-  A decriptação pode até funcionar, mas a assinatura do dono não confere: registra 7021 e o arquivo não é gravado.
-
-* **Por que bcrypt, com custo 8?**
-  É exigência do enunciado. O salt aleatório impede ataques com tabelas pré-calculadas, e o custo (2⁸ iterações) torna cada tentativa de força bruta cara.
-
-* **Como a chave AES é recriada a partir da semente?**
-  O SHA1PRNG é determinístico quando recebe a semente antes de qualquer uso. A mesma semente gera a mesma chave.
+* **Onde fica a chave do TOTP?**
+  No banco, em BASE32, cifrada com AES derivado da senha pessoal. Por isso a etapa 3 depende da senha descoberta na etapa 2.
+* **Como funciona a margem de ±30 s?**
+  `validateCode()` compara com os intervalos t−1, t e t+1.
+* **Por que o user02 vê `teste01` e não abre?**
+  Vê por ser do mesmo grupo, mas o `.env` foi cifrado com a chave pública do user01 e não há `.shr` para o user02.
+* **E se alterarem um `.enc`?**
+  A decriptação pode funcionar, mas a assinatura do dono não confere: 7021, e o arquivo não é gravado.
+* **Por que bcrypt com custo 8?**
+  Exigência do enunciado. O salt aleatório impede tabelas pré-calculadas, e 2⁸ iterações tornam cada tentativa cara.
+* **Como a mesma semente gera sempre a mesma chave AES?**
+  O SHA1PRNG é determinístico quando recebe a semente antes de qualquer uso.
+* **E se rodarem num Java 8 antigo?**
+  Antes do update 161 o AES fica limitado a 128 bits. O sistema detecta isso na partida e explica, em vez de acusar "frase secreta inválida".
+* **Como garantem que o `logView` não faz parte do cofre?**
+  São dois jars: `jar tf cofre.jar` não lista `LogView`, e o `logview.jar` não tem nenhuma tela do cofre.
