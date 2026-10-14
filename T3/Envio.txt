@@ -1,0 +1,149 @@
+================================================================================
+INF1416 - Seguranca da Informacao - Trabalho 3: Cofre Digital (Digital Vault)
+Departamento de Informatica - PUC-Rio
+Professor: Anderson Oliveira da Silva
+================================================================================
+
+INTEGRANTES DO GRUPO:
+  - Rodrigo      (Matricula: 2210814)
+  - Breno Gallo  (Matricula: 2110183)
+
+--------------------------------------------------------------------------------
+1. ARQUIVOS FONTES EM JAVA (src/*.java) - OBRIGATORIOS PARA ENVIO
+--------------------------------------------------------------------------------
+Todos os 19 arquivos abaixo estao na pasta "src/" e possuem o cabecalho de
+identificacao com os nomes e matriculas dos integrantes:
+
+  1. src/Autenticador.java
+     - Logica das tres etapas de autenticacao multifator (e-mail, senha e TOTP).
+     - Busca em paralelo das 2^n combinacoes no teclado virtual via OpenBSDBCrypt.
+     - Controle e persistencia dos erros consecutivos e bloqueio de 2 minutos.
+
+  2. src/BancoDeDados.java
+     - Conexao e gerenciamento do banco relacional SQLite (cofre.db).
+     - Criacao e populacao das 5 tabelas (Usuarios, Chaveiro, Grupos, Mensagens, Registros).
+     - Garantia de que a tabela Registros NAO armazena o texto das mensagens.
+
+  3. src/Base32.java
+     - Implementacao de codificacao/decodificacao BASE32 (RFC 4648).
+     - Codigo do anexo da especificacao (Brian Wellington).
+
+  4. src/ChavePrivadaInvalidaException.java
+     - Excecao customizada para distinguir erro de frase secreta (6006)
+       de erro de par chave/certificado (6007).
+
+  5. src/CofreDigital.java
+     - Ponto de entrada (main) do sistema e gerenciador de janelas/telas.
+     - Processo de partida (sem usuarios vs. com usuarios) e chave do admin em memoria.
+     - Registro dos eventos de inicio/termino de sistema e sessao.
+
+  6. src/Componentes.java
+     - Fabrica e utilitarios visuais da interface grafica Swing.
+     - Formatador de telas em tres partes (cabecalho, corpo 1 e corpo 2).
+     - Limitadores de tamanho de campos (255 caracteres / 10 digitos).
+
+  7. src/Criptografia.java
+     - Operacoes JCA/JCE: SHA1PRNG -> chave AES-256, AES/ECB/PKCS5Padding.
+     - Envelopes RSA/ECB/PKCS1Padding e assinaturas SHA1withRSA.
+     - Restauracao de chaves PKCS8 e certificados X.509 (leitura de PEM).
+     - Validacao de chave privada por teste de assinatura (10240 bytes e 2048 bytes).
+
+  8. src/LogView.java
+     - Programa de auditoria separado do cofre (executavel isolado logview.jar).
+     - Leitura de frase secreta no console sem eco (System.console().readPassword()).
+     - Autenticacao do administrador via assinatura de 2048 bytes.
+     - Exibicao cronologica dos logs com MID, data/hora e parametros montados.
+
+  9. src/PastaSegura.java
+     - Decriptacao e verificacao de integridade/autenticidade de index e share.
+     - Regras de controle de acesso (dono, grupo e compartilhamentos).
+     - Decriptacao de arquivos protegidos (.enc + .env / .shr) e checagem de assinatura (.asd).
+
+ 10. src/ServicoCadastro.java
+     - Regras de validacao do formulario de cadastro de novos usuarios.
+     - Critica da senha pessoal (8-10 digitos, sem sequencias repetidas).
+     - Hash da senha com bcrypt ($2y$08$, salt de 16 bytes).
+     - Geracao de 20 bytes aleatorios para segredo TOTP, codificacao BASE32 e cifragem AES.
+
+ 11. src/TelaCadastro.java
+     - Interface da tela de cadastro de usuarios (e da partida inicial).
+     - Dialogo modal de confirmacao com campos do certificado digital.
+     - Apresentacao da chave TOTP em BASE32 e URI otpauth.
+
+ 12. src/TelaConsulta.java
+     - Interface da tela de consulta de arquivos da pasta segura.
+     - Validacao da frase secreta e listagem dos arquivos autorizados.
+     - Acao de decriptar arquivo selecionado e salvar com nome secreto.
+
+ 13. src/TelaLogin.java
+     - Interface da Etapa 1 da autenticacao (login name / e-mail).
+
+ 14. src/TelaPrincipal.java
+     - Interface do menu principal com cabeçalho, corpo 1 e corpo 2.
+     - Exibicao condicional da opcao de cadastro (apenas para Administrador).
+
+ 15. src/TelaSaida.java
+     - Interface da tela de saida com opcoes Encerrar Sessao e Encerrar Sistema.
+
+ 16. src/TelaSenha.java
+     - Interface da Etapa 2 da autenticacao (teclado virtual sobrecarregado).
+     - 5 botoes com 2 digitos cada, redistribuidos a cada clique.
+     - Mascara de senha em asteriscos e execucao em segundo plano.
+
+ 17. src/TelaToken.java
+     - Interface da Etapa 3 da autenticacao (codigo TOTP de 6 digitos).
+
+ 18. src/TOTP.java
+     - Algoritmo TOTP compativel com Google Authenticator (RFCs 6238, 4226, 4648).
+     - Estrutura exata do anexo do PDF, importando APENAS classes permitidas.
+     - Tolerancia temporal de +-30 segundos (intervalos t-1, t, t+1).
+
+ 19. src/Usuario.java
+     - Modelo de dados do usuario (UID, login, nome, GID, KID, contadores, bloqueio).
+
+--------------------------------------------------------------------------------
+2. ARQUIVOS AUXILIARES RECOMENDADOS PARA INCLUSAO NO PACOTE
+--------------------------------------------------------------------------------
+Estes arquivos facilitam a compilacao, avaliacao e demonstracao pelo professor:
+
+  - build.sh
+    Script para compilar os fontes Java com alvo Java 8 e gerar os dois JARs:
+    cofre.jar (aplicacao principal) e logview.jar (programa de auditoria isolado).
+
+  - README.md
+    Documentacao geral do projeto, requisitos, instrucoes de compilacao e execucao,
+    e decisoes de interpretacao tomadas.
+
+  - HowToTest.md
+    Roteiro completo de testes manuais e de demonstracao cobrindo todos os fluxos
+    e os 64 codigos de registro.
+
+  - Roteiro.md
+    Guia de apresentacao com roteiro passo a passo e explicacoes tecnicas.
+
+  - Envio.txt
+    Este arquivo com a relacao oficial dos arquivos submetidos.
+
+--------------------------------------------------------------------------------
+3. ARQUIVOS E PASTAS QUE NAO DEVEM SER ENVIADOS
+--------------------------------------------------------------------------------
+Os seguintes itens sao gerados em tempo de execucao ou sao bibliotecas externas
+e NAO devem fazer parte do arquivo .zip enviado no EAD:
+
+  - cofre.db                      (banco de dados gerado em execucao)
+  - lib/*.jar                     (bcprov e sqlite-jdbc devem ser baixados via Maven Central)
+  - build/                        (diretorio de compilacao/classes geradas)
+  - *.class                       (bytecodes compilados)
+  - cofre.jar, logview.jar        (arquivos executaveis gerados pelo build.sh)
+  - *.docx                        (arquivos decriptados durante testes na pasta segura)
+  - FilesTeste/                   (copia temporaria usada para testes de adulteracao)
+  - .git/                         (historico de versao local)
+
+--------------------------------------------------------------------------------
+4. INFORMACOES DE SUBMISSAO (Trabalho3.pdf - Pagina 7)
+--------------------------------------------------------------------------------
+  - Local de submissao: Sistema de EAD da PUC-Rio
+  - Prazo regular: 18/10/2026 ate as 23:59h
+  - Prazo maximo com atraso: 19/10/2026 ate as 11:59h
+  - IMPORTANTE: Cada integrante do grupo deve fazer uma submissao individual no EAD.
+================================================================================

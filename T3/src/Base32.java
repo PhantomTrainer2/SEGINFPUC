@@ -1,3 +1,9 @@
+/*
+ * INF1416 - Seguranca da Informacao - Trabalho 3 (Cofre Digital)
+ * Rodrigo - 2210814
+ * Breno Gallo - 2110183
+ */
+
 import java.io.*;
 
 /**
