@@ -1,0 +1,26 @@
+# 1. Instalar JDK (Eclipse Temurin 21) e SQLite3 via winget
+winget install --id EclipseAdoptium.Temurin.21.JDK --source winget --accept-package-agreements --accept-source-agreements
+winget install --id SQLite.SQLite --source winget --accept-package-agreements --accept-source-agreements
+
+# 2. Localizar o JDK instalado e configurar JAVA_HOME e PATH
+$jdkDir = Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Directory -Filter "jdk*" | Sort-Object Name -Descending | Select-Object -First 1
+if ($jdkDir) {
+    [Environment]::SetEnvironmentVariable("JAVA_HOME", $jdkDir.FullName, "User")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($userPath -notlike "*$($jdkDir.FullName)\bin*") {
+        [Environment]::SetEnvironmentVariable("Path", "$($jdkDir.FullName)\bin;$userPath", "User")
+    }
+    $env:JAVA_HOME = $jdkDir.FullName
+    $env:Path = "$($jdkDir.FullName)\bin;$env:Path;" + [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+    Write-Host "JAVA_HOME configurado para: $($env:JAVA_HOME)" -ForegroundColor Green
+}
+
+# 3. Baixar bcprov-jdk18on-1.86.jar e sqlite-jdbc-3.53.4.0.jar em T3/lib
+$t3Dir = "C:\Users\Breno Gallo\Desktop\Projetos Breno\SEGINFPUC\T3"
+New-Item -ItemType Directory -Force -Path "$t3Dir\lib" | Out-Null
+Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.86/bcprov-jdk18on-1.86.jar" -OutFile "$t3Dir\lib\bcprov-jdk18on-1.86.jar"
+Invoke-WebRequest -Uri "https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar" -OutFile "$t3Dir\lib\sqlite-jdbc-3.53.4.0.jar"
+
+# 4. Compilar o projeto, rodar os testes unitarios e preparar para o teste manual
+Set-Location $t3Dir
+& "C:\Program Files\Git\bin\bash.exe" -c "./build.sh && ./testesUni/rodar.sh unitario && rm -f cofre.db"
