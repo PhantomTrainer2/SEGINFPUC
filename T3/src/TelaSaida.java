@@ -10,9 +10,6 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-/**
- * Tela de Saida: confirma o encerramento da sessao ou do sistema.
- */
 class TelaSaida extends JPanel {
 
     private static final long serialVersionUID = 1L;

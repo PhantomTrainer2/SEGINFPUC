@@ -33,19 +33,12 @@ import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
 import javax.security.auth.x500.X500Principal;
 
-/**
- * Operacoes criptograficas do Cofre Digital (JCA/JCE do proprio JDK):
- * derivacao da chave AES via SHA1PRNG, cifragem AES/ECB/PKCS5Padding,
- * restauracao da chave privada (PKCS8) e do certificado (X.509),
- * envelope digital RSA e assinatura digital SHA1withRSA.
- */
 public final class Criptografia {
 
     static final String ALG_SIMETRICO = "AES/ECB/PKCS5Padding";
     static final String ALG_ENVELOPE = "RSA/ECB/PKCS1Padding";
     static final String ALG_ASSINATURA = "SHA1withRSA";
 
-    // OID do atributo E-mail (PKCS#9) presente no campo Sujeito dos certificados
     static final String OID_EMAIL = "1.2.840.113549.1.9.1";
 
     private static final String INICIO_CERTIFICADO = "-----BEGIN CERTIFICATE-----";
@@ -61,11 +54,6 @@ public final class Criptografia {
     private Criptografia() {
     }
 
-    /**
-     * JREs 8 anteriores ao update 161 vem com a politica de criptografia
-     * restrita (AES limitado a 128 bits): sem esta checagem, a falha ao usar
-     * a chave AES de 256 bits apareceria como "frase secreta invalida".
-     */
     static boolean suportaAES256() {
         try {
             return Cipher.getMaxAllowedKeyLength("AES") >= 256;
@@ -79,10 +67,6 @@ public final class Criptografia {
                 + "Digital usa chaves AES de 256 bits. Execute com o Java 8u161 ou superior.";
     }
 
-    /**
-     * Gera a chave AES de 256 bits a partir de uma semente (frase secreta,
-     * senha pessoal ou semente de um envelope digital) usando o PRNG SHA1PRNG.
-     */
     static SecretKey gerarChaveAES(byte[] semente) throws GeneralSecurityException {
         SecureRandom prng = SecureRandom.getInstance("SHA1PRNG");
         prng.setSeed(semente);
@@ -103,10 +87,6 @@ public final class Criptografia {
         return cifra.doFinal(dados);
     }
 
-    /**
-     * Extrai o bloco PEM do certificado. Os arquivos .crt fornecidos possuem
-     * um texto descritivo antes do bloco, que nao deve ir para o banco.
-     */
     static String extrairPEMCertificado(byte[] conteudo) throws CertificateException {
         String texto = new String(conteudo, StandardCharsets.US_ASCII);
         int inicio = texto.indexOf(INICIO_CERTIFICADO);
@@ -123,10 +103,6 @@ public final class Criptografia {
                 new ByteArrayInputStream(pem.getBytes(StandardCharsets.US_ASCII)));
     }
 
-    /**
-     * Decripta o arquivo binario da chave privada com a chave AES derivada da
-     * frase secreta e restaura o objeto PrivateKey (PKCS8 codificado em BASE64).
-     */
     static PrivateKey restaurarChavePrivada(byte[] chaveCifrada, char[] frase) throws GeneralSecurityException {
         byte[] semente = paraBytes(frase);
         byte[] pem = null;
@@ -155,10 +131,6 @@ public final class Criptografia {
         }
     }
 
-    /**
-     * Verifica se a chave privada forma par com a chave publica, assinando um
-     * array aleatorio de tamanho bytes e verificando a assinatura.
-     */
     static boolean verificarParDeChaves(PrivateKey privada, PublicKey publica, int tamanho)
             throws GeneralSecurityException {
         byte[] teste = new byte[tamanho];
@@ -169,10 +141,6 @@ public final class Criptografia {
         return verificarAssinatura(teste, assinador.sign(), publica);
     }
 
-    /**
-     * Validacao completa da chave privada: testa a frase secreta e depois o
-     * par com a chave publica do certificado (assinatura de array aleatorio).
-     */
     static PrivateKey validarChavePrivada(byte[] chaveCifrada, char[] frase, PublicKey publica, int tamanhoTeste)
             throws ChavePrivadaInvalidaException {
         PrivateKey privada;
@@ -203,22 +171,16 @@ public final class Criptografia {
         try {
             return verificador.verify(assinatura);
         } catch (SignatureException e) {
-            // Assinatura mal formada (ex.: tamanho incorreto)
             return false;
         }
     }
 
-    /**
-     * Abre um envelope digital (RSA/ECB/PKCS1Padding) com a chave privada,
-     * retornando a semente do SHA1PRNG que gera a chave AES do arquivo.
-     */
     static byte[] abrirEnvelope(byte[] envelope, PrivateKey privada) throws GeneralSecurityException {
         Cipher cifra = Cipher.getInstance(ALG_ENVELOPE);
         cifra.init(Cipher.DECRYPT_MODE, privada);
         return cifra.doFinal(envelope);
     }
 
-    /** Converte caracteres para bytes UTF-8 sem criar String (permite apagar a copia). */
     static byte[] paraBytes(char[] caracteres) {
         ByteBuffer buffer = StandardCharsets.UTF_8.encode(CharBuffer.wrap(caracteres));
         byte[] bytes = Arrays.copyOfRange(buffer.array(), buffer.position(), buffer.limit());
@@ -226,17 +188,14 @@ public final class Criptografia {
         return bytes;
     }
 
-    /** Nome distinto legivel (ex.: EMAILADDRESS=..., CN=..., OU=...). */
     static String nomeDistinto(X500Principal principal) {
         return principal.getName(X500Principal.RFC1779, NOMES_OID);
     }
 
-    /** Login name (e-mail) extraido do campo Sujeito do certificado. */
     static String extrairEmail(X509Certificate certificado) {
         return extrairAtributo(certificado.getSubjectX500Principal(), "EMAILADDRESS");
     }
 
-    /** Nome do usuario (Friendly Name / CN) extraido do campo Sujeito do certificado. */
     static String extrairNome(X509Certificate certificado) {
         return extrairAtributo(certificado.getSubjectX500Principal(), "CN");
     }
@@ -250,7 +209,6 @@ public final class Criptografia {
                 }
             }
         } catch (InvalidNameException e) {
-            // nome distinto mal formado: trata como atributo ausente
         }
         return null;
     }

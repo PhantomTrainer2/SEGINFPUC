@@ -1,6 +1,7 @@
 #!/bin/sh
-# INF1416 - Trabalho 3 - Cofre Digital
-# Compila os fontes (bytecode Java 8) e gera cofre.jar e logview.jar.
+# INF1416 - Seguranca da Informacao - Trabalho 3 (Cofre Digital)
+# Rodrigo - 2210814
+# Breno Gallo - 2110183
 set -e
 cd "$(dirname "$0")"
 
@@ -14,8 +15,6 @@ for jar in "$BCPROV" "$SQLITE"; do
     fi
 done
 
-# O instalador do JDK no Windows so coloca java/javac no PATH (sem o jar):
-# nesse caso usa as ferramentas de $JAVA_HOME/bin
 if ! command -v jar >/dev/null 2>&1 && [ -n "$JAVA_HOME" ]; then
     JDK_BIN="$(cygpath -u "$JAVA_HOME" 2>/dev/null || echo "$JAVA_HOME")/bin"
     PATH="$JDK_BIN:$PATH"
@@ -27,15 +26,12 @@ for ferramenta in javac jar; do
     fi
 done
 
-# No JDK 8 usa -source/-target; nos JDKs 9+ usa --release 8, que tambem
-# impede o uso de APIs posteriores ao Java 8
 if javac -version 2>&1 | grep -q ' 1\.8\.'; then
     COMPAT="-source 1.8 -target 1.8"
 else
     COMPAT="--release 8 -Xlint:-options"
 fi
 
-# No Windows (Git Bash/MSYS/Cygwin) o javac espera ';' como separador do classpath
 case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*) SEP=';' ;;
     *) SEP=':' ;;
@@ -48,7 +44,6 @@ javac $COMPAT -encoding UTF-8 -cp "$BCPROV$SEP$SQLITE" -d build/classes src/*.ja
 printf 'Main-Class: CofreDigital\nClass-Path: %s %s\n' "$BCPROV" "$SQLITE" > build/manifest-cofre.txt
 printf 'Main-Class: LogView\nClass-Path: %s\n' "$SQLITE" > build/manifest-logview.txt
 
-# O logView e um programa separado: suas classes nao entram no cofre.jar
 cd build/classes
 jar cfm ../../cofre.jar ../manifest-cofre.txt $(ls *.class | grep -v '^LogView')
 jar cfm ../../logview.jar ../manifest-logview.txt LogView*.class BancoDeDados*.class Usuario*.class \

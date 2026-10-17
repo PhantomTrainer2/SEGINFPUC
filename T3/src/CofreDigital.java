@@ -2,12 +2,6 @@
  * INF1416 - Seguranca da Informacao - Trabalho 3 (Cofre Digital)
  * Rodrigo - 2210814
  * Breno Gallo - 2110183
- *
- * Uso:
- *   java -jar cofre.jar
- *   (ou: java -cp build/classes:lib/bcprov-jdk18on-1.86.jar:lib/sqlite-jdbc-3.53.4.0.jar CofreDigital)
- *
- * O banco de dados (cofre.db) e criado/aberto no diretorio corrente.
  */
 
 import java.awt.event.WindowAdapter;
@@ -24,11 +18,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 
-/**
- * Janela principal do Cofre Digital: partida do sistema, navegacao entre as
- * telas e estado da execucao (chave privada do administrador em memoria e
- * usuario corrente).
- */
 public class CofreDigital extends JFrame {
 
     private static final long serialVersionUID = 1L;
@@ -37,12 +26,9 @@ public class CofreDigital extends JFrame {
     final Autenticador autenticador;
     final ServicoCadastro servicoCadastro;
 
-    // Chave privada do administrador: necessaria para abrir os envelopes dos
-    // arquivos index e share. Mantida apenas em memoria durante a execucao.
     private PrivateKey chavePrivadaAdmin;
     private X509Certificate certificadoAdmin;
 
-    // Usuario em autenticacao ou com sessao ativa
     private Usuario usuarioAtual;
     private boolean sessaoAtiva;
 
@@ -78,7 +64,6 @@ public class CofreDigital extends JFrame {
             return;
         }
 
-        // Erros inesperados (ex.: falha no banco) sao apresentados ao usuario
         Thread.setDefaultUncaughtExceptionHandler((thread, erro) -> {
             erro.printStackTrace();
             SwingUtilities.invokeLater(() -> Componentes.erro(null, "Erro interno: " + erro.getMessage()));
@@ -88,10 +73,6 @@ public class CofreDigital extends JFrame {
         SwingUtilities.invokeLater(() -> new CofreDigital(banco).partida());
     }
 
-    /**
-     * Partida do sistema: sem usuarios, cadastra o administrador; caso
-     * contrario, valida a frase secreta da chave privada do administrador.
-     */
     private void partida() {
         if (banco.contarUsuarios() == 0) {
             banco.registrar(1005, null, null);
@@ -138,10 +119,6 @@ public class CofreDigital extends JFrame {
         }
     }
 
-    /**
-     * Restaura a chave privada do usuario (guardada cifrada no Chaveiro) com
-     * a frase secreta e verifica o par com o certificado digital.
-     */
     PrivateKey validarChaveDoUsuario(Usuario usuario, char[] frase) throws ChavePrivadaInvalidaException {
         return Criptografia.validarChavePrivada(banco.buscarChavePrivada(usuario.kid), frase,
                 carregarCertificado(usuario).getPublicKey(), ServicoCadastro.TAMANHO_TESTE_ASSINATURA);
@@ -155,7 +132,6 @@ public class CofreDigital extends JFrame {
         }
     }
 
-    /** Chaves do administrador cadastrado na partida do sistema. */
     void definirChavesAdministrador(PrivateKey chavePrivada, X509Certificate certificado) {
         this.chavePrivadaAdmin = chavePrivada;
         this.certificadoAdmin = certificado;
@@ -191,8 +167,6 @@ public class CofreDigital extends JFrame {
         repaint();
     }
 
-    // ---- Autenticacao ----
-
     void iniciarAutenticacao() {
         usuarioAtual = null;
         sessaoAtiva = false;
@@ -214,7 +188,6 @@ public class CofreDigital extends JFrame {
         mostrarTela(new TelaToken(this, usuarioAtual, senha));
     }
 
-    /** Retorna a primeira etapa apos o bloqueio do usuario na etapa 2 ou 3. */
     void voltarParaEtapa1(int midEncerramentoEtapa) {
         registrar(midEncerramentoEtapa);
         iniciarAutenticacao();
@@ -229,8 +202,6 @@ public class CofreDigital extends JFrame {
         setTitle("Cofre Digital");
         mostrarTelaPrincipal();
     }
-
-    // ---- Telas da sessao ----
 
     void mostrarTelaPrincipal() {
         registrar(5001);
@@ -257,7 +228,6 @@ public class CofreDigital extends JFrame {
         iniciarAutenticacao();
     }
 
-    /** Encerra a execucao apagando da memoria a chave privada do administrador. */
     void encerrarSistema() {
         if (sessaoAtiva) {
             registrar(1004);

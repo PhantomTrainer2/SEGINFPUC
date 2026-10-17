@@ -29,20 +29,15 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 import javax.swing.text.JTextComponent;
 
-/**
- * Componentes e utilitarios de interface compartilhados pelas telas.
- */
 final class Componentes {
 
     private Componentes() {
     }
 
-    /** Limita o campo a uma quantidade maxima de caracteres. */
     static void limitar(JTextComponent campo, int maximo) {
         ((AbstractDocument) campo.getDocument()).setDocumentFilter(new FiltroCampo(maximo, false));
     }
 
-    /** Limita o campo a uma quantidade maxima de digitos (descarta o resto). */
     static void limitarDigitos(JTextComponent campo, int maximo) {
         ((AbstractDocument) campo.getDocument()).setDocumentFilter(new FiltroCampo(maximo, true));
     }
@@ -83,10 +78,6 @@ final class Componentes {
         return rotulo;
     }
 
-    /**
-     * Monta uma tela no formato do enunciado: cabecalho (login, grupo e nome),
-     * corpo 1 e corpo 2. Sem usuario (partida do sistema) o cabecalho e um titulo.
-     */
     static JPanel montarTela(Usuario usuario, JComponent corpo1, JComponent corpo2) {
         JPanel cabecalho;
         if (usuario != null) {
@@ -105,7 +96,6 @@ final class Componentes {
         return tela;
     }
 
-    /** Empilha os componentes verticalmente, alinhados a esquerda. */
     static JPanel coluna(JComponent... itens) {
         JPanel painel = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
@@ -121,7 +111,6 @@ final class Componentes {
         return painel;
     }
 
-    /** Botao "..." que preenche o campo com um arquivo (ou pasta) escolhido. */
     static JButton botaoProcurar(final JTextField campo, final boolean somentePastas) {
         JButton botao = new JButton("...");
         botao.setMargin(new Insets(2, 6, 2, 6));
@@ -139,7 +128,6 @@ final class Componentes {
         return botao;
     }
 
-    /** Coloca o foco no campo assim que ele aparecer na tela. */
     static void focarAoExibir(final JComponent campo) {
         campo.addAncestorListener(new AncestorListener() {
             @Override
@@ -166,7 +154,6 @@ final class Componentes {
         JOptionPane.showMessageDialog(pai, quebrarLinhas(mensagem), "Cofre Digital", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** Mensagens longas sao apresentadas com quebra automatica de linha. */
     private static JLabel quebrarLinhas(String mensagem) {
         String html = mensagem.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 .replace("\n", "<br>");

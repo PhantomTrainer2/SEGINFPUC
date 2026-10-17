@@ -15,11 +15,6 @@ import java.util.Arrays;
 import javax.crypto.SecretKey;
 import org.bouncycastle.crypto.generators.OpenBSDBCrypt;
 
-/**
- * Regras do cadastro de usuarios: critica da senha pessoal, leitura do
- * certificado, validacao da chave privada, armazenamento da senha (bcrypt)
- * e geracao da chave secreta TOTP.
- */
 public class ServicoCadastro {
 
     static final int TAMANHO_TESTE_ASSINATURA = 10240;
@@ -27,7 +22,6 @@ public class ServicoCadastro {
     static final int TAMANHO_SALT_BCRYPT = 16;
     static final int TAMANHO_CHAVE_TOTP = 20;
 
-    /** Erro de cadastro com mensagem apresentavel ao usuario. */
     static class CadastroException extends Exception {
         private static final long serialVersionUID = 1L;
 
@@ -36,7 +30,6 @@ public class ServicoCadastro {
         }
     }
 
-    /** Dados validados, aguardando a confirmacao do usuario. */
     static class DadosCadastro {
         X509Certificate certificado;
         String certificadoPem;
@@ -62,10 +55,6 @@ public class ServicoCadastro {
         this.banco = banco;
     }
 
-    /**
-     * Critica todos os campos do formulario. O parametro operador e o login
-     * de quem pressionou o botao Cadastrar (null na partida do sistema).
-     */
     DadosCadastro validar(String operador, String caminhoCertificado, String caminhoChave, char[] frase,
                           int gid, char[] senha, char[] confirmacao) throws CadastroException {
         String erroSenha = criticarSenha(senha, confirmacao);
@@ -118,10 +107,6 @@ public class ServicoCadastro {
         return dados;
     }
 
-    /**
-     * Inclui o usuario (somente se o login name for unico). Retorna a chave
-     * secreta TOTP em BASE32, que deve ser apresentada ao usuario.
-     */
     String efetivar(DadosCadastro dados) throws CadastroException {
         if (banco.buscarUsuarioPorLogin(dados.login) != null) {
             throw new CadastroException("O login name " + dados.login + " ja esta cadastrado no sistema.");
@@ -152,10 +137,6 @@ public class ServicoCadastro {
         return chaveBase32;
     }
 
-    /**
-     * Senha pessoal: 8, 9 ou 10 digitos de 0 a 9, sem digitos iguais em
-     * sequencia (ex.: 11), igual a confirmacao. Retorna o erro ou null.
-     */
     static String criticarSenha(char[] senha, char[] confirmacao) {
         if (senha.length < Autenticador.MIN_DIGITOS_SENHA || senha.length > Autenticador.MAX_DIGITOS_SENHA) {
             return "A senha pessoal deve ter 8, 9 ou 10 digitos.";

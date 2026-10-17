@@ -19,23 +19,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Acesso a pasta segura. Cada arquivo protegido e formado por:
- *   codigo.enc   criptograma (AES/ECB/PKCS5Padding)
- *   codigo.env   envelope digital da semente SHA1PRNG (chave publica do dono)
- *   codigo.N.shr envelope do N-esimo compartilhamento (chave publica do autorizado)
- *   codigo.asd   assinatura digital SHA1withRSA do dono
- * Os arquivos index e share pertencem ao administrador do sistema.
- */
 public class PastaSegura {
 
-    /** Arquivo protegido listado no index. */
     static class Arquivo {
         final String nomeCodigo;
         final String nomeSecreto;
         final String dono;
         final String grupo;
-        // IDs de compartilhamento deste arquivo com o usuario corrente
         final List<String> compartilhamentos = new ArrayList<String>();
 
         Arquivo(String nomeCodigo, String nomeSecreto, String dono, String grupo) {
@@ -46,7 +36,6 @@ public class PastaSegura {
         }
     }
 
-    /** Falha com mensagem apresentavel ao usuario (o registro ja foi gravado). */
     static class FalhaPastaSegura extends Exception {
         private static final long serialVersionUID = 1L;
 
@@ -65,16 +54,10 @@ public class PastaSegura {
         this.chavePublicaAdmin = chavePublicaAdmin;
     }
 
-    /**
-     * Decripta e verifica os arquivos index e share e retorna os arquivos que
-     * o usuario pode visualizar: os que ele e dono, os do seu grupo e os
-     * compartilhados com ele.
-     */
     List<Arquivo> listar(File pasta, Usuario usuario) throws FalhaPastaSegura {
         String index = abrirArquivoDeControle(pasta, "index", "indice", usuario.login, 7005, 7006, 7007, 7008);
         String share = abrirArquivoDeControle(pasta, "share", "share", usuario.login, 7010, 7011, 7012, 7013);
 
-        // share: NOME_CODIGO ID_COMPARTILHAMENTO USUARIO_AUTORIZADO
         Map<String, List<String>> compartilhados = new HashMap<String, List<String>>();
         for (String[] campos : linhas(share, 3)) {
             if (campos[2].equalsIgnoreCase(usuario.login) && campos[1].matches("\\d+")) {
@@ -87,7 +70,6 @@ public class PastaSegura {
             }
         }
 
-        // index: NOME_CODIGO NOME_SECRETO DONO GRUPO
         List<Arquivo> visiveis = new ArrayList<Arquivo>();
         for (String[] campos : linhas(index, 4)) {
             Arquivo arquivo = new Arquivo(campos[0], campos[1], campos[2], campos[3]);
@@ -104,12 +86,6 @@ public class PastaSegura {
         return visiveis;
     }
 
-    /**
-     * Decripta o arquivo selecionado e grava o resultado com o nome secreto.
-     * Acesso permitido ao dono (envelope .env) ou ao usuario com quem o
-     * arquivo foi compartilhado (envelope .N.shr); a assinatura e sempre
-     * verificada com a chave publica do dono.
-     */
     File decriptarArquivo(File pasta, Arquivo arquivo, Usuario usuario, PrivateKey chavePrivadaUsuario)
             throws FalhaPastaSegura {
         String login = usuario.login;
@@ -166,7 +142,6 @@ public class PastaSegura {
         return saida;
     }
 
-    /** Decripta e verifica um arquivo de controle (index ou share) com as chaves do administrador. */
     private String abrirArquivoDeControle(File pasta, String nomeCodigo, String descricao, String login,
                                           int midDecriptado, int midVerificado,
                                           int midFalhaDecriptacao, int midFalhaVerificacao)
@@ -190,7 +165,6 @@ public class PastaSegura {
         return new String(conteudo, StandardCharsets.US_ASCII);
     }
 
-    /** Abre o envelope, deriva a chave AES da semente e decripta codigo.enc. */
     private static byte[] decriptar(File pasta, String nomeCodigo, String nomeEnvelope, PrivateKey chave)
             throws IOException, GeneralSecurityException {
         byte[] semente = Criptografia.abrirEnvelope(ler(pasta, nomeEnvelope), chave);
@@ -213,7 +187,6 @@ public class PastaSegura {
         return Files.readAllBytes(new File(pasta, nome).toPath());
     }
 
-    /** Linhas com exatamente quantidadeCampos campos separados por espaco. */
     private static List<String[]> linhas(String texto, int quantidadeCampos) {
         List<String[]> resultado = new ArrayList<String[]>();
         for (String linha : texto.split("\\r?\\n")) {
@@ -225,13 +198,11 @@ public class PastaSegura {
         return resultado;
     }
 
-    /** Compara grupos sem acentos e sem caixa: o grupo do banco (com acento) com o do index. */
     static String normalizar(String texto) {
         String semAcentos = Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
         return semAcentos.toLowerCase(Locale.ROOT);
     }
 
-    /** Impede que o nome secreto aponte para fora da pasta (ex.: ../arquivo). */
     private static String nomeSeguro(String nomeSecreto) throws FalhaPastaSegura {
         String nome = new File(nomeSecreto).getName();
         if (nome.isEmpty() || nome.equals(".") || nome.equals("..")) {

@@ -13,10 +13,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-/**
- * Tela Principal: total de acessos do usuario e Menu Principal. A opcao de
- * cadastro so e apresentada para o grupo Administrador.
- */
 class TelaPrincipal extends JPanel {
 
     private static final long serialVersionUID = 1L;

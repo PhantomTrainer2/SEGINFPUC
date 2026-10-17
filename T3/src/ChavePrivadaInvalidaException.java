@@ -4,10 +4,6 @@
  * Breno Gallo - 2110183
  */
 
-/**
- * Falha na validacao de uma chave privada: a frase secreta nao decripta a
- * chave ou a chave nao forma par com a chave publica do certificado.
- */
 public class ChavePrivadaInvalidaException extends Exception {
 
     private static final long serialVersionUID = 1L;

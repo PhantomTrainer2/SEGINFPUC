@@ -4,9 +4,6 @@
  * Breno Gallo - 2110183
  */
 
-/**
- * Registro de um usuario da tabela Usuarios, acompanhado do nome do seu grupo.
- */
 public class Usuario {
     int uid;
     String login;

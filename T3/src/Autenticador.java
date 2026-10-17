@@ -13,12 +13,6 @@ import java.util.stream.IntStream;
 import javax.crypto.SecretKey;
 import org.bouncycastle.crypto.generators.OpenBSDBCrypt;
 
-/**
- * Regras das tres etapas da autenticacao multifator:
- * 1) login name; 2) senha pessoal via teclado virtual sobrecarregado (bcrypt);
- * 3) token TOTP. Controla os erros consecutivos e o bloqueio de 2 minutos,
- * gravando os registros correspondentes.
- */
 public class Autenticador {
 
     static final int MAX_ERROS = 3;
@@ -40,10 +34,6 @@ public class Autenticador {
         return login != null && FORMATO_EMAIL.matcher(login).matches();
     }
 
-    /**
-     * Etapa 1: identifica o usuario pelo login name. Retorna null se o login
-     * nao for identificado; o chamador verifica se o acesso esta bloqueado.
-     */
     Usuario identificarUsuario(String login) {
         Usuario usuario = loginValido(login) ? banco.buscarUsuarioPorLogin(login) : null;
         if (usuario == null) {
@@ -56,12 +46,6 @@ public class Autenticador {
         return usuario;
     }
 
-    /**
-     * Etapa 2: cada botao pressionado no teclado virtual corresponde a um par
-     * de digitos, logo a senha digitada e uma de 2^n combinacoes. Retorna a
-     * senha que confere com o hash bcrypt (necessaria na etapa 3) ou null,
-     * contabilizando o erro e bloqueando o acesso no terceiro erro.
-     */
     char[] verificarSenha(Usuario usuario, List<int[]> paresPressionados) {
         char[] senha = null;
         int quantidade = paresPressionados.size();
@@ -87,10 +71,6 @@ public class Autenticador {
         return null;
     }
 
-    /**
-     * Etapa 3: decripta a chave TOTP do usuario (AES com chave derivada da
-     * senha pessoal) e valida o codigo informado com margem de +-30 segundos.
-     */
     boolean verificarToken(Usuario usuario, char[] senha, String codigo) {
         if (tokenConfere(usuario, senha, codigo)) {
             usuario.errosToken = 0;
@@ -110,7 +90,6 @@ public class Autenticador {
         return false;
     }
 
-    /** Testa as 2^n combinacoes em paralelo (cada teste bcrypt custo 8 e lento). */
     static char[] buscarSenha(final String hash, final List<int[]> pares) {
         OptionalInt combinacao = IntStream.range(0, 1 << pares.size())
                 .parallel()
@@ -119,7 +98,6 @@ public class Autenticador {
         return combinacao.isPresent() ? montarCandidata(pares, combinacao.getAsInt()) : null;
     }
 
-    /** O bit i da mascara escolhe qual digito do i-esimo par compoe a senha. */
     static char[] montarCandidata(List<int[]> pares, int mascara) {
         char[] candidata = new char[pares.size()];
         for (int i = 0; i < candidata.length; i++) {

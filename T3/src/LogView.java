@@ -2,15 +2,6 @@
  * INF1416 - Seguranca da Informacao - Trabalho 3 (Cofre Digital)
  * Rodrigo - 2210814
  * Breno Gallo - 2110183
- *
- * Uso:
- *   java -jar logview.jar <Caminho_Chave_Privada_Admin> [Caminho_Banco_de_Dados]
- *
- * Programa de auditoria, separado do Cofre Digital (nao faz parte do cofre.jar).
- * Apenas um administrador pode executa-lo: a chave privada informada e
- * decriptada com a frase secreta (lida sem eco) e validada com a assinatura
- * de um array aleatorio de 2048 bytes, verificada com o certificado digital
- * de um usuario do grupo Administrador.
  */
 
 import java.io.Console;
@@ -79,7 +70,6 @@ public class LogView {
         }
     }
 
-    /** A chave deve ser decriptada pela frase e formar par com o certificado de um administrador. */
     private static Usuario autenticarAdministrador(BancoDeDados banco, byte[] chaveCifrada, char[] frase)
             throws GeneralSecurityException {
         PrivateKey chavePrivada;
@@ -98,7 +88,6 @@ public class LogView {
                 + "(assinatura digital invalida).");
     }
 
-    /** Mensagens de registro em ordem cronologica, com data, hora e codigo. */
     private static void exibirRegistros(List<BancoDeDados.LinhaRegistro> registros) {
         SimpleDateFormat formatoBanco = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
         SimpleDateFormat formatoTela = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");

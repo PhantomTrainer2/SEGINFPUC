@@ -9,3 +9,5 @@ lib/
 Pacote-T3/Files/*.docx
 # Copia da pasta segura usada nos testes de adulteracao (HowToTest.md)
 FilesTeste/
+.vscode/
+

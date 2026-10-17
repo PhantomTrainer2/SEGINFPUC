@@ -21,10 +21,6 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 
-/**
- * Tela de Cadastro: total de usuarios do sistema e Formulario de Cadastro.
- * Tambem usada na partida do sistema para cadastrar o administrador.
- */
 class TelaCadastro extends JPanel {
 
     private static final long serialVersionUID = 1L;
@@ -52,7 +48,6 @@ class TelaCadastro extends JPanel {
         Componentes.limitar(campoFrase, 255);
         Componentes.limitar(campoSenha, 10);
         Componentes.limitar(campoConfirmacao, 10);
-        // O primeiro usuario do sistema e o administrador; depois o padrao e Usuario
         comboGrupo.setSelectedIndex(partida ? 0 : 1);
         comboGrupo.setEnabled(!partida);
 
@@ -136,7 +131,6 @@ class TelaCadastro extends JPanel {
             mostrarChaveTotp(dados.login, chaveTotp);
 
             if (partida) {
-                // A chave privada do administrador permanece em memoria durante a execucao
                 janela.definirChavesAdministrador(dados.chavePrivada, dados.certificado);
                 janela.iniciarAutenticacao();
                 return;
@@ -144,7 +138,6 @@ class TelaCadastro extends JPanel {
             limparFormulario();
             atualizarTotal();
         } catch (ServicoCadastro.CadastroException e) {
-            // O formulario permanece preenchido para correcao
             Componentes.erro(this, e.getMessage());
         } finally {
             Arrays.fill(frase, '\0');
@@ -156,7 +149,6 @@ class TelaCadastro extends JPanel {
         }
     }
 
-    /** Tela de confirmacao com os campos do certificado digital. */
     private boolean confirmarDados(ServicoCadastro.DadosCadastro dados) {
         X509Certificate certificado = dados.certificado;
         SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
@@ -195,7 +187,6 @@ class TelaCadastro extends JPanel {
         return escolha == 0;
     }
 
-    /** Apresenta a chave TOTP (BASE32) para cadastro no Google Authenticator. */
     private void mostrarChaveTotp(String login, String chaveBase32) {
         JTextField campoChaveTotp = new JTextField(chaveBase32);
         campoChaveTotp.setEditable(false);

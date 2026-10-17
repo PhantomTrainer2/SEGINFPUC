@@ -32,10 +32,6 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
 
-/**
- * Tela de Consultar Pasta de Arquivos Secretos do Usuario: total de consultas,
- * caminho da pasta segura, frase secreta, listagem e decriptacao de arquivos.
- */
 class TelaConsulta extends JPanel {
 
     private static final long serialVersionUID = 1L;
@@ -56,7 +52,6 @@ class TelaConsulta extends JPanel {
     };
     private final JTable tabela = new JTable(modelo);
 
-    // Estado da ultima listagem bem-sucedida
     private List<PastaSegura.Arquivo> arquivos = new ArrayList<PastaSegura.Arquivo>();
     private File pastaListada;
     private PrivateKey chavePrivadaUsuario;
@@ -138,7 +133,6 @@ class TelaConsulta extends JPanel {
                 BorderLayout.NORTH);
         areaTabela.add(rolagem, BorderLayout.CENTER);
 
-        // Corpo 1 igual ao da Tela Principal; o total de consultas abre o corpo 2
         JPanel corpo2 = new JPanel(new BorderLayout(0, 10));
         corpo2.add(Componentes.coluna(totalConsultas, campos, linhaListar), BorderLayout.NORTH);
         corpo2.add(areaTabela, BorderLayout.CENTER);
@@ -164,7 +158,6 @@ class TelaConsulta extends JPanel {
         pastaListada = null;
         chavePrivadaUsuario = null;
 
-        // A frase secreta e validada como no cadastro (decriptacao + assinatura de teste)
         char[] frase = campoFrase.getPassword();
         try {
             chavePrivadaUsuario = janela.validarChaveDoUsuario(usuario, frase);

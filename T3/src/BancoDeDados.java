@@ -15,13 +15,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Acesso ao banco de dados relacional (SQLite via JDBC) com as cinco tabelas
- * do Cofre Digital: Usuarios, Chaveiro, Grupos, Mensagens e Registros.
- *
- * Os metodos (exceto o construtor) convertem SQLException em
- * IllegalStateException, tratada pela interface como erro interno.
- */
 public class BancoDeDados {
 
     static final int GID_ADMINISTRADOR = 1;
@@ -33,7 +26,6 @@ public class BancoDeDados {
     private static final String SELECT_USUARIO =
             "SELECT u.*, g.nome AS nome_grupo FROM Usuarios u JOIN Grupos g ON g.GID = u.GID ";
 
-    // Tabela de Mensagens de Registro do enunciado (acentos como escapes unicode: fonte em ASCII)
     private static final Object[][] MENSAGENS = {
         {1001, "Sistema iniciado."},
         {1002, "Sistema encerrado."},
@@ -101,10 +93,6 @@ public class BancoDeDados {
         {8004, "Bot\u00e3o voltar de sair para o menu principal pressionado por <login_name>."},
     };
 
-    /**
-     * Linha da tabela Registros acompanhada do texto-modelo da mensagem
-     * (usada apenas pelo programa logView).
-     */
     static class LinhaRegistro {
         String dataHora;
         int mid;
@@ -135,7 +123,6 @@ public class BancoDeDados {
             st.executeUpdate("CREATE TABLE IF NOT EXISTS Grupos ("
                     + " GID INTEGER PRIMARY KEY,"
                     + " nome TEXT NOT NULL UNIQUE)");
-            // KID e preenchido apos a insercao do par chave/certificado no Chaveiro
             st.executeUpdate("CREATE TABLE IF NOT EXISTS Usuarios ("
                     + " UID INTEGER PRIMARY KEY AUTOINCREMENT,"
                     + " login TEXT NOT NULL UNIQUE COLLATE NOCASE,"
@@ -157,7 +144,6 @@ public class BancoDeDados {
             st.executeUpdate("CREATE TABLE IF NOT EXISTS Mensagens ("
                     + " MID INTEGER PRIMARY KEY,"
                     + " texto TEXT NOT NULL)");
-            // Sem o texto da mensagem: apenas o MID e os dados que a completam
             st.executeUpdate("CREATE TABLE IF NOT EXISTS Registros ("
                     + " RID INTEGER PRIMARY KEY AUTOINCREMENT,"
                     + " MID INTEGER NOT NULL REFERENCES Mensagens(MID),"
@@ -220,7 +206,6 @@ public class BancoDeDados {
         }
     }
 
-    /** Administrador do sistema: o primeiro usuario cadastrado (partida do sistema). */
     synchronized Usuario buscarAdministradorDoSistema() {
         try (PreparedStatement ps = conexao.prepareStatement(
                 SELECT_USUARIO + "WHERE u.GID = ? ORDER BY u.UID LIMIT 1")) {
@@ -284,10 +269,6 @@ public class BancoDeDados {
         }
     }
 
-    /**
-     * Insere o usuario e o seu par chave privada/certificado (Chaveiro) numa
-     * unica transacao, associando o KID gerado ao registro do usuario.
-     */
     synchronized int inserirUsuario(String login, String nome, int gid, String hashSenha, byte[] tokenCifrado,
                                     String certificadoPem, byte[] chavePrivadaCifrada) {
         try {
@@ -323,14 +304,12 @@ public class BancoDeDados {
             try {
                 conexao.rollback();
             } catch (SQLException ignorada) {
-                // a excecao original e mais relevante
             }
             throw erro(e);
         } finally {
             try {
                 conexao.setAutoCommit(true);
             } catch (SQLException ignorada) {
-                // conexao ja inutilizavel; o erro original sera reportado
             }
         }
     }
@@ -343,7 +322,6 @@ public class BancoDeDados {
         atualizarInteiro("UPDATE Usuarios SET erros_token = ? WHERE UID = ?", erros, uid);
     }
 
-    /** Bloqueia o acesso ate o instante informado e zera os contadores de erro. */
     synchronized void bloquearUsuario(int uid, long bloqueadoAte) {
         try (PreparedStatement ps = conexao.prepareStatement(
                 "UPDATE Usuarios SET bloqueado_ate = ?, erros_senha = 0, erros_token = 0 WHERE UID = ?")) {
@@ -363,11 +341,6 @@ public class BancoDeDados {
         atualizarInteiro("UPDATE Usuarios SET total_consultas = total_consultas + ? WHERE UID = ?", 1, uid);
     }
 
-    /**
-     * Grava um registro (log) com o codigo da mensagem, a data/hora, o login
-     * name do usuario (quando houver) e o arquivo (quando houver). O texto da
-     * mensagem nao e gravado. Uma falha aqui nao interrompe o sistema.
-     */
     synchronized void registrar(int mid, String login, String arquivo) {
         String dataHora = new SimpleDateFormat(FORMATO_DATA_HORA).format(new Date());
         try (PreparedStatement ps = conexao.prepareStatement(
@@ -384,7 +357,6 @@ public class BancoDeDados {
         }
     }
 
-    /** Registros em ordem cronologica, com o texto-modelo da mensagem. */
     synchronized List<LinhaRegistro> listarRegistros() {
         List<LinhaRegistro> linhas = new ArrayList<LinhaRegistro>();
         try (Statement st = conexao.createStatement();

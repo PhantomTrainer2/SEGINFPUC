@@ -13,16 +13,12 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Autenticacao - etapa 3: codigo TOTP gerado pelo Google Authenticator.
- */
 class TelaToken extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
     private final CofreDigital janela;
     private final Usuario usuario;
-    // Senha pessoal verificada na etapa 2: deriva a chave AES que decripta a chave TOTP
     private final char[] senha;
     private final JTextField campoToken = new JTextField(8);
 

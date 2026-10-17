@@ -21,11 +21,6 @@ import javax.swing.JPasswordField;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Autenticacao - etapa 2: senha pessoal pelo teclado virtual numerico
- * sobrecarregado. Sao cinco botoes com dois digitos cada, distribuidos
- * aleatoriamente e sem repeticao; a cada clique os digitos sao redistribuidos.
- */
 class TelaSenha extends JPanel {
 
     private static final long serialVersionUID = 1L;
@@ -34,7 +29,6 @@ class TelaSenha extends JPanel {
     private final Usuario usuario;
     private final SecureRandom aleatorio = new SecureRandom();
 
-    // Pares de digitos dos botoes pressionados (nunca o digito escolhido)
     private final List<int[]> paresPressionados = new ArrayList<int[]>();
     private final int[][] distribuicao = new int[5][2];
 
@@ -56,7 +50,6 @@ class TelaSenha extends JPanel {
         linhaSenha.add(new JLabel("Senha pessoal:"));
         linhaSenha.add(campoSenha);
 
-        // Layout do enunciado: 3 botoes + OK na primeira linha, 2 botoes + LIMPAR na segunda
         JPanel teclado = new JPanel(new GridLayout(2, 4, 8, 8));
         for (int i = 0; i < botoesDigitos.length; i++) {
             final int indice = i;
@@ -91,7 +84,6 @@ class TelaSenha extends JPanel {
         atualizar();
     }
 
-    /** Distribui os digitos 0-9 aleatoriamente, sem repeticao, entre os cinco botoes. */
     private void redistribuir() {
         List<Integer> digitos = new ArrayList<Integer>();
         for (int d = 0; d <= 9; d++) {
@@ -132,7 +124,6 @@ class TelaSenha extends JPanel {
         botaoLimpar.setEnabled(quantidade > 0);
     }
 
-    /** Testa as combinacoes em segundo plano para nao travar a interface. */
     private void confirmar() {
         final List<int[]> pares = new ArrayList<int[]>(paresPressionados);
         for (JButton botao : botoesDigitos) {

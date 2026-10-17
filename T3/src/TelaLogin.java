@@ -12,9 +12,6 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Autenticacao - etapa 1: identificacao do usuario pelo login name (e-mail).
- */
 class TelaLogin extends JPanel {
 
     private static final long serialVersionUID = 1L;
